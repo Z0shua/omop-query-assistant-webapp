@@ -60,7 +60,7 @@ export function QueryInput({ onSubmit, isProcessing, placeholder = "Ask a questi
         setQuery(transcript);
       };
       
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error', event.error);
         toast.error(`Speech recognition error: ${event.error}`);
         setIsRecording(false);
