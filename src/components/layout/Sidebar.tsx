@@ -77,6 +77,7 @@ export function Sidebar() {
               variant="ghost"
               onClick={() => setCollapsed(!collapsed)}
               className="w-full justify-center"
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <ChevronLeft className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
               {!collapsed && <span className="ml-2">Collapse</span>}

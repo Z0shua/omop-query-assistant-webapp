@@ -2,7 +2,7 @@
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { Sidebar } from './Sidebar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,7 +22,7 @@ export function Layout({ children }: LayoutProps) {
       <Header />
       <div className="flex flex-1 pt-16">
         <Sidebar />
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 sm:pl-16 md:pl-16 lg:pl-16 xl:pl-16 px-4 sm:px-6 lg:px-8 py-8 transition-all duration-300">
           <div className="container animate-slide-in">
             {children}
           </div>
