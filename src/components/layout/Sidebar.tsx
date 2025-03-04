@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,13 +9,23 @@ import {
   Settings, 
   Database, 
   ChevronLeft,
+  ChevronRight,
   HelpCircle,
   FileText
 } from 'lucide-react';
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    // Check if there's a saved preference in localStorage
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    return savedState ? JSON.parse(savedState) : false;
+  });
   const location = useLocation();
+
+  // Save preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(collapsed));
+  }, [collapsed]);
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
@@ -48,6 +58,7 @@ export function Sidebar() {
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
               }`}
+              title={collapsed ? item.name : undefined}
             >
               <item.icon className={`h-5 w-5 ${collapsed ? 'mx-auto' : 'mr-3'}`} />
               {!collapsed && <span>{item.name}</span>}
@@ -59,6 +70,7 @@ export function Sidebar() {
           <Link
             to="/help"
             className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
+            title={collapsed ? "Help & Documentation" : undefined}
           >
             <HelpCircle className={`h-5 w-5 ${collapsed ? 'mx-auto' : 'mr-3'}`} />
             {!collapsed && <span>Help & Documentation</span>}
@@ -67,6 +79,7 @@ export function Sidebar() {
           <Link
             to="/examples"
             className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors"
+            title={collapsed ? "Example Queries" : undefined}
           >
             <FileText className={`h-5 w-5 ${collapsed ? 'mx-auto' : 'mr-3'}`} />
             {!collapsed && <span>Example Queries</span>}
@@ -79,8 +92,14 @@ export function Sidebar() {
               className="w-full justify-center"
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <ChevronLeft className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
-              {!collapsed && <span className="ml-2">Collapse</span>}
+              {collapsed ? (
+                <ChevronRight className="h-5 w-5" aria-label="Expand sidebar" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-5 w-5" aria-label="Collapse sidebar" />
+                  <span className="ml-2">Collapse</span>
+                </>
+              )}
             </Button>
           </div>
         </div>
