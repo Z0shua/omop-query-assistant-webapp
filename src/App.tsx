@@ -10,6 +10,8 @@ import QueryPage from "./pages/QueryPage";
 import SettingsPage from "./pages/SettingsPage";
 import HistoryPage from "./pages/HistoryPage";
 import DatabaseInfoPage from "./pages/DatabaseInfoPage";
+import HelpPage from "./pages/HelpPage";
+import ExamplesPage from "./pages/ExamplesPage";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,8 @@ const App = () => (
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/database" element={<DatabaseInfoPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/help" element={<HelpPage />} />
+          <Route path="/examples" element={<ExamplesPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
