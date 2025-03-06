@@ -90,7 +90,7 @@ export default function QueryPage() {
         toast({
           title: "Missing Database Configuration",
           description: "Please configure either Databricks or a local database in Settings",
-          variant: "warning"
+          variant: "default" // Changed from "warning" to "default" as "warning" is not a valid variant
         });
         // We don't return false here because we'll fall back to mock data
       }
@@ -191,6 +191,7 @@ ORDER BY count DESC
 LIMIT 10`;
     } else {
       return `-- Generated SQL for: ${query}
+-- Using ${getProviderName()} and ${getDatabaseTypeName()}
 SELECT 
   p.person_id,
   p.year_of_birth,
@@ -477,98 +478,5 @@ LIMIT 20`;
       ? 'Databricks SQL' 
       : 'Local DuckDB';
   }
-  
-  // Mock functions to generate sample data for demonstration
-  function generateMockSql(query: string): string {
-    if (query.toLowerCase().includes('gender')) {
-      return `SELECT gender_concept_id, concept_name as gender, COUNT(*) as count
-FROM person
-JOIN concept ON person.gender_concept_id = concept.concept_id
-GROUP BY gender_concept_id, concept_name
-ORDER BY count DESC`;
-    } else if (query.toLowerCase().includes('age')) {
-      return `WITH age_calc AS (
-  SELECT
-    FLOOR((JULIANDAY('now') - JULIANDAY(birth_datetime)) / 365.25) as age
-  FROM person
-)
-SELECT
-  CASE
-    WHEN age < 18 THEN '0-17'
-    WHEN age BETWEEN 18 AND 34 THEN '18-34'
-    WHEN age BETWEEN 35 AND 49 THEN '35-49'
-    WHEN age BETWEEN 50 AND 64 THEN '50-64'
-    WHEN age >= 65 THEN '65+'
-  END as age_group,
-  COUNT(*) as count
-FROM age_calc
-GROUP BY age_group
-ORDER BY age_group`;
-    } else if (query.toLowerCase().includes('diagnoses')) {
-      return `SELECT c.concept_name as diagnosis, COUNT(*) as count
-FROM condition_occurrence co
-JOIN concept c ON co.condition_concept_id = c.concept_id
-GROUP BY c.concept_name
-ORDER BY count DESC
-LIMIT 10`;
-    } else {
-      return `-- Generated SQL for: ${query}
--- Using ${getProviderName()} and ${getDatabaseTypeName()}
-SELECT 
-  p.person_id,
-  p.year_of_birth,
-  c.concept_name as gender,
-  COUNT(DISTINCT co.condition_occurrence_id) as condition_count
-FROM 
-  person p
-JOIN 
-  concept c ON p.gender_concept_id = c.concept_id
-LEFT JOIN 
-  condition_occurrence co ON p.person_id = co.person_id
-GROUP BY 
-  p.person_id, p.year_of_birth, c.concept_name
-ORDER BY 
-  condition_count DESC
-LIMIT 20`;
-    }
-  }
-
-  function generateMockData(query: string): any[] {
-    if (query.toLowerCase().includes('gender')) {
-      return [
-        { gender_concept_id: 8507, gender: 'Male', count: 357 },
-        { gender_concept_id: 8532, gender: 'Female', count: 392 },
-        { gender_concept_id: 8521, gender: 'Other', count: 12 },
-      ];
-    } else if (query.toLowerCase().includes('age')) {
-      return [
-        { age_group: '0-17', count: 120 },
-        { age_group: '18-34', count: 210 },
-        { age_group: '35-49', count: 185 },
-        { age_group: '50-64', count: 156 },
-        { age_group: '65+', count: 90 },
-      ];
-    } else if (query.toLowerCase().includes('diagnoses')) {
-      return [
-        { diagnosis: 'Essential hypertension', count: 125 },
-        { diagnosis: 'Hyperlipidemia', count: 98 },
-        { diagnosis: 'Type 2 diabetes mellitus', count: 87 },
-        { diagnosis: 'Acute bronchitis', count: 76 },
-        { diagnosis: 'Low back pain', count: 72 },
-        { diagnosis: 'Anxiety disorder', count: 68 },
-        { diagnosis: 'Major depressive disorder', count: 56 },
-        { diagnosis: 'Acute upper respiratory infection', count: 52 },
-        { diagnosis: 'Gastroesophageal reflux disease', count: 49 },
-        { diagnosis: 'Osteoarthritis', count: 43 },
-      ];
-    } else {
-      // Generic sample data
-      return Array.from({ length: 10 }, (_, i) => ({
-        person_id: 1000 + i,
-        year_of_birth: Math.floor(Math.random() * 50) + 1950,
-        gender: Math.random() > 0.5 ? 'Male' : 'Female',
-        condition_count: Math.floor(Math.random() * 15) + 1
-      }));
-    }
-  }
 }
+
