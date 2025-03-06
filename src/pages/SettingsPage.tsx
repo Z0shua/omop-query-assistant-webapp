@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { ApiKeyForm } from '@/components/ApiKeyForm';
+import { AIProviderSettings } from '@/components/AIProviderSettings';
+import { DatabricksSettings } from '@/components/DatabricksSettings';
 import { DatabaseSettings } from '@/components/DatabaseSettings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
@@ -19,10 +20,14 @@ export default function SettingsPage() {
     saveHistory: true,
   });
 
-  // Handle API credentials save
-  const handleCredentialsSave = (newCredentials: any) => {
+  // Handle AI provider credentials save
+  const handleAIProviderSave = (newCredentials: any) => {
     setCredentials(newCredentials);
-    localStorage.setItem('apiCredentials', JSON.stringify(newCredentials));
+  };
+
+  // Handle Databricks config save
+  const handleDatabricksConfigSave = (newCredentials: any) => {
+    setCredentials(newCredentials);
   };
 
   // Handle database config save
@@ -58,6 +63,17 @@ export default function SettingsPage() {
     }
   };
 
+  // Mock function for testing Databricks connection
+  const testDatabricksConnection = async (): Promise<boolean> => {
+    try {
+      // Simulate an API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   return (
     <Layout>
       <div className="mb-8">
@@ -67,17 +83,26 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="api" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="api">API Credentials</TabsTrigger>
-          <TabsTrigger value="database">Database</TabsTrigger>
+      <Tabs defaultValue="ai" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsTrigger value="ai">AI Providers</TabsTrigger>
+          <TabsTrigger value="databricks">Databricks</TabsTrigger>
+          <TabsTrigger value="database">Local Database</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="api" className="animate-fade-in">
-          <ApiKeyForm 
-            onSave={handleCredentialsSave} 
+        <TabsContent value="ai" className="animate-fade-in">
+          <AIProviderSettings 
+            onSave={handleAIProviderSave} 
             initialValues={credentials}
+          />
+        </TabsContent>
+
+        <TabsContent value="databricks" className="animate-fade-in">
+          <DatabricksSettings 
+            onSave={handleDatabricksConfigSave}
+            initialValues={credentials.databricks}
+            onTestConnection={testDatabricksConnection}
           />
         </TabsContent>
 

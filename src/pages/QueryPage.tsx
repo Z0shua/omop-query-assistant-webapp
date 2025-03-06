@@ -29,14 +29,73 @@ export default function QueryPage() {
   }, [location.state]);
 
   const checkCredentials = () => {
-    if (!credentials.apiKey || !credentials.endpoint || !credentials.deploymentName) {
-      toast({
-        title: "Missing API Configuration",
-        description: "Please configure your Azure OpenAI API credentials in Settings",
-        variant: "destructive"
-      });
-      return false;
+    const provider = credentials.selectedProvider;
+    
+    switch (provider) {
+      case 'azure':
+        if (!credentials.azure.apiKey || !credentials.azure.endpoint || !credentials.azure.deploymentName) {
+          toast({
+            title: "Missing Azure OpenAI Configuration",
+            description: "Please configure your Azure OpenAI API credentials in Settings",
+            variant: "destructive"
+          });
+          return false;
+        }
+        break;
+      case 'anthropic':
+        if (!credentials.anthropic.apiKey) {
+          toast({
+            title: "Missing Anthropic Configuration",
+            description: "Please configure your Anthropic API credentials in Settings",
+            variant: "destructive"
+          });
+          return false;
+        }
+        break;
+      case 'google':
+        if (!credentials.google.apiKey) {
+          toast({
+            title: "Missing Google AI Configuration",
+            description: "Please configure your Google AI API credentials in Settings",
+            variant: "destructive"
+          });
+          return false;
+        }
+        break;
+      case 'deepseek':
+        if (!credentials.deepseek.apiKey) {
+          toast({
+            title: "Missing Deepseek Configuration",
+            description: "Please configure your Deepseek API credentials in Settings",
+            variant: "destructive"
+          });
+          return false;
+        }
+        break;
+      default:
+        toast({
+          title: "Invalid AI Provider",
+          description: "Please select a valid AI provider in Settings",
+          variant: "destructive"
+        });
+        return false;
     }
+    
+    // Check if Databricks credentials are available
+    const usingDatabricks = credentials.databricks.host && credentials.databricks.token;
+    if (!usingDatabricks) {
+      // If not using Databricks, check for local database configuration
+      const dbConfig = localStorage.getItem('databaseConfig');
+      if (!dbConfig) {
+        toast({
+          title: "Missing Database Configuration",
+          description: "Please configure either Databricks or a local database in Settings",
+          variant: "warning"
+        });
+        // We don't return false here because we'll fall back to mock data
+      }
+    }
+    
     return true;
   };
 
@@ -46,6 +105,12 @@ export default function QueryPage() {
     setProcessingQuery(true);
     
     try {
+      // Check which database to use
+      const usingDatabricks = credentials.databricks.host && credentials.databricks.token;
+      
+      // In a real implementation, we would make different API calls based on the selected AI provider and database
+      // For demonstration purposes, we'll use the mock data generator
+      
       // Simulate API call to the backend (would be a real API call in production)
       await new Promise(resolve => setTimeout(resolve, 2000));
       
@@ -56,6 +121,8 @@ export default function QueryPage() {
         rows: mockData.length,
         columns: mockData.length > 0 ? Object.keys(mockData[0]) : [],
         execution_time_ms: Math.random() * 1000 + 200,
+        database_type: usingDatabricks ? 'Databricks' : 'DuckDB',
+        ai_provider: credentials.selectedProvider
       };
       
       // Add to history
@@ -71,7 +138,7 @@ export default function QueryPage() {
       setQueryHistory(prev => [queryResult, ...prev]);
       toast({
         title: "Query processed successfully",
-        description: `Found ${mockData.length} results.`,
+        description: `Found ${mockData.length} results using ${credentials.selectedProvider.toUpperCase()}.`,
       });
     } catch (error) {
       toast({
@@ -191,12 +258,12 @@ LIMIT 20`;
         </p>
       </div>
 
-      {!credentials.apiKey && (
+      {!checkCredentialsForAlert() && (
         <Alert className="mb-6" variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Configuration Required</AlertTitle>
           <AlertDescription>
-            You need to configure your Azure OpenAI API credentials in the Settings page 
+            You need to configure your AI provider credentials in the Settings page 
             before you can use the Query Assistant.
           </AlertDescription>
         </Alert>
@@ -208,7 +275,7 @@ LIMIT 20`;
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center text-lg">
                 <Brain className="mr-2 h-5 w-5 text-primary" />
-                Natural Language Query
+                Natural Language Query using {getProviderName()}
               </CardTitle>
               <CardDescription>
                 Ask questions about patient demographics, conditions, medications, and more
@@ -312,6 +379,15 @@ LIMIT 20`;
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-3 text-sm">
+                    <div className="font-medium">Using: {getDatabaseTypeName()}</div>
+                    {credentials.databricks.host && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Connected to Databricks at {credentials.databricks.host}
+                        {credentials.databricks.catalog && ` (Catalog: ${credentials.databricks.catalog})`}
+                      </div>
+                    )}
+                  </div>
                   <ul className="space-y-3 text-sm">
                     <li>
                       <div className="font-medium">person</div>
@@ -358,4 +434,141 @@ LIMIT 20`;
       </div>
     </Layout>
   );
+  
+  // Helper function to check credentials for the alert
+  function checkCredentialsForAlert() {
+    const provider = credentials.selectedProvider;
+    
+    switch (provider) {
+      case 'azure':
+        return !!(credentials.azure.apiKey && credentials.azure.endpoint && credentials.azure.deploymentName);
+      case 'anthropic':
+        return !!credentials.anthropic.apiKey;
+      case 'google':
+        return !!credentials.google.apiKey;
+      case 'deepseek':
+        return !!credentials.deepseek.apiKey;
+      default:
+        return false;
+    }
+  }
+  
+  // Helper function to get friendly provider name
+  function getProviderName() {
+    const provider = credentials.selectedProvider;
+    
+    switch (provider) {
+      case 'azure':
+        return 'Azure OpenAI';
+      case 'anthropic':
+        return 'Anthropic Claude';
+      case 'google':
+        return 'Google AI';
+      case 'deepseek':
+        return 'Deepseek';
+      default:
+        return 'Unknown Provider';
+    }
+  }
+  
+  // Helper function to get database type name
+  function getDatabaseTypeName() {
+    return (credentials.databricks.host && credentials.databricks.token) 
+      ? 'Databricks SQL' 
+      : 'Local DuckDB';
+  }
+  
+  // Mock functions to generate sample data for demonstration
+  function generateMockSql(query: string): string {
+    if (query.toLowerCase().includes('gender')) {
+      return `SELECT gender_concept_id, concept_name as gender, COUNT(*) as count
+FROM person
+JOIN concept ON person.gender_concept_id = concept.concept_id
+GROUP BY gender_concept_id, concept_name
+ORDER BY count DESC`;
+    } else if (query.toLowerCase().includes('age')) {
+      return `WITH age_calc AS (
+  SELECT
+    FLOOR((JULIANDAY('now') - JULIANDAY(birth_datetime)) / 365.25) as age
+  FROM person
+)
+SELECT
+  CASE
+    WHEN age < 18 THEN '0-17'
+    WHEN age BETWEEN 18 AND 34 THEN '18-34'
+    WHEN age BETWEEN 35 AND 49 THEN '35-49'
+    WHEN age BETWEEN 50 AND 64 THEN '50-64'
+    WHEN age >= 65 THEN '65+'
+  END as age_group,
+  COUNT(*) as count
+FROM age_calc
+GROUP BY age_group
+ORDER BY age_group`;
+    } else if (query.toLowerCase().includes('diagnoses')) {
+      return `SELECT c.concept_name as diagnosis, COUNT(*) as count
+FROM condition_occurrence co
+JOIN concept c ON co.condition_concept_id = c.concept_id
+GROUP BY c.concept_name
+ORDER BY count DESC
+LIMIT 10`;
+    } else {
+      return `-- Generated SQL for: ${query}
+-- Using ${getProviderName()} and ${getDatabaseTypeName()}
+SELECT 
+  p.person_id,
+  p.year_of_birth,
+  c.concept_name as gender,
+  COUNT(DISTINCT co.condition_occurrence_id) as condition_count
+FROM 
+  person p
+JOIN 
+  concept c ON p.gender_concept_id = c.concept_id
+LEFT JOIN 
+  condition_occurrence co ON p.person_id = co.person_id
+GROUP BY 
+  p.person_id, p.year_of_birth, c.concept_name
+ORDER BY 
+  condition_count DESC
+LIMIT 20`;
+    }
+  }
+
+  function generateMockData(query: string): any[] {
+    if (query.toLowerCase().includes('gender')) {
+      return [
+        { gender_concept_id: 8507, gender: 'Male', count: 357 },
+        { gender_concept_id: 8532, gender: 'Female', count: 392 },
+        { gender_concept_id: 8521, gender: 'Other', count: 12 },
+      ];
+    } else if (query.toLowerCase().includes('age')) {
+      return [
+        { age_group: '0-17', count: 120 },
+        { age_group: '18-34', count: 210 },
+        { age_group: '35-49', count: 185 },
+        { age_group: '50-64', count: 156 },
+        { age_group: '65+', count: 90 },
+      ];
+    } else if (query.toLowerCase().includes('diagnoses')) {
+      return [
+        { diagnosis: 'Essential hypertension', count: 125 },
+        { diagnosis: 'Hyperlipidemia', count: 98 },
+        { diagnosis: 'Type 2 diabetes mellitus', count: 87 },
+        { diagnosis: 'Acute bronchitis', count: 76 },
+        { diagnosis: 'Low back pain', count: 72 },
+        { diagnosis: 'Anxiety disorder', count: 68 },
+        { diagnosis: 'Major depressive disorder', count: 56 },
+        { diagnosis: 'Acute upper respiratory infection', count: 52 },
+        { diagnosis: 'Gastroesophageal reflux disease', count: 49 },
+        { diagnosis: 'Osteoarthritis', count: 43 },
+      ];
+    } else {
+      // Generic sample data
+      return Array.from({ length: 10 }, (_, i) => ({
+        person_id: 1000 + i,
+        year_of_birth: Math.floor(Math.random() * 50) + 1950,
+        gender: Math.random() > 0.5 ? 'Male' : 'Female',
+        condition_count: Math.floor(Math.random() * 15) + 1
+      }));
+    }
+  }
 }
