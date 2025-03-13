@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -99,6 +98,85 @@ export default function QueryPage() {
     return true;
   };
 
+  const queryAIProvider = async (naturalLanguageQuery: string, sqlQuery: string) => {
+    const provider = credentials.selectedProvider;
+    
+    try {
+      // In a real implementation, this would make an API call to the backend
+      // which would then call the AI provider API with the appropriate credentials
+      
+      // For demonstration, simulate a response after a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Generate a mock AI response based on the query
+      let aiResponse = '';
+      
+      if (naturalLanguageQuery.toLowerCase().includes('gender')) {
+        aiResponse = `
+          <p>This query analyzes the gender distribution of patients in the database.</p>
+          <p>The results show:</p>
+          <ul>
+            <li><strong>Male patients:</strong> 357 (46.9%)</li>
+            <li><strong>Female patients:</strong> 392 (51.4%)</li>
+            <li><strong>Other:</strong> 12 (1.6%)</li>
+          </ul>
+          <p>The SQL query joins the person table with the concept table to retrieve the human-readable gender labels from the concept_name field, rather than just showing the concept IDs.</p>
+        `;
+      } else if (naturalLanguageQuery.toLowerCase().includes('age')) {
+        aiResponse = `
+          <p>This query analyzes the age distribution of patients in the database.</p>
+          <p>The results show a fairly even distribution across age groups:</p>
+          <ul>
+            <li><strong>Children and adolescents (0-17):</strong> 120 patients (15.8%)</li>
+            <li><strong>Young adults (18-34):</strong> 210 patients (27.6%)</li>
+            <li><strong>Middle-aged adults (35-49):</strong> 185 patients (24.3%)</li>
+            <li><strong>Older adults (50-64):</strong> 156 patients (20.5%)</li>
+            <li><strong>Seniors (65+):</strong> 90 patients (11.8%)</li>
+          </ul>
+          <p>The SQL uses a Common Table Expression (CTE) to calculate each patient's age from their birth_datetime, and then groups them into standard age brackets.</p>
+        `;
+      } else if (naturalLanguageQuery.toLowerCase().includes('diagnoses')) {
+        aiResponse = `
+          <p>This query shows the top 10 most common diagnoses in the database.</p>
+          <p>Key findings:</p>
+          <ul>
+            <li>Essential hypertension is the most common diagnosis (125 patients)</li>
+            <li>Cardiometabolic conditions (hypertension, hyperlipidemia, diabetes) represent 3 of the top 10 diagnoses</li>
+            <li>Mental health conditions (anxiety, depression) are also prevalent</li>
+          </ul>
+          <p>The SQL joins the condition_occurrence table with the concept table to get the human-readable diagnosis names rather than just concept IDs.</p>
+        `;
+      } else {
+        aiResponse = `
+          <p>I've analyzed your query: "${naturalLanguageQuery}"</p>
+          <p>The SQL retrieves patient demographic information along with the count of distinct medical conditions for each patient. Here's what it's doing:</p>
+          <ol>
+            <li>Selecting basic patient information (ID, birth year)</li>
+            <li>Joining with the concept table to get the human-readable gender description</li>
+            <li>Left joining with condition_occurrence to count conditions</li>
+            <li>Grouping by patient to get one row per person</li>
+            <li>Ordering by condition count to show patients with the most conditions first</li>
+            <li>Limiting results to 20 patients</li>
+          </ol>
+          <p>This gives you a view of which patients have the most recorded conditions, which might be useful for identifying patients with complex medical histories or high utilization.</p>
+        `;
+      }
+      
+      return {
+        success: true,
+        response: aiResponse,
+        provider: getProviderName()
+      };
+    } catch (error) {
+      console.error('Error querying AI provider:', error);
+      return {
+        success: false,
+        response: 'Failed to process query through AI provider.',
+        provider: getProviderName()
+      };
+    }
+  };
+
   const handleQuerySubmit = async (queryText: string) => {
     if (!checkCredentials()) return;
     
@@ -117,12 +195,16 @@ export default function QueryPage() {
       // Simulate a successful response
       const mockSql = generateMockSql(queryText);
       const mockData = generateMockData(queryText);
+      
+      // Get AI explanation for the query
+      const aiResult = await queryAIProvider(queryText, mockSql);
+      
       const mockMetrics = {
         rows: mockData.length,
         columns: mockData.length > 0 ? Object.keys(mockData[0]) : [],
         execution_time_ms: Math.random() * 1000 + 200,
         database_type: usingDatabricks ? 'Databricks' : 'DuckDB',
-        ai_provider: credentials.selectedProvider
+        ai_provider: getProviderName()
       };
       
       // Add to history
@@ -132,7 +214,8 @@ export default function QueryPage() {
         sql: mockSql,
         data: mockData,
         metrics: mockMetrics,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        aiResponse: aiResult.response
       };
       
       setQueryHistory(prev => [queryResult, ...prev]);
@@ -300,6 +383,7 @@ LIMIT 20`;
                   data={item.data}
                   metrics={item.metrics}
                   timestamp={item.timestamp}
+                  aiResponse={item.aiResponse}
                 />
               ))}
             </ScrollArea>
@@ -479,4 +563,3 @@ LIMIT 20`;
       : 'Local DuckDB';
   }
 }
-

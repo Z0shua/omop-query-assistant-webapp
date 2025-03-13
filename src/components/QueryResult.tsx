@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,11 @@ import {
   BarChart,
   TableIcon,
   Maximize2,
-  Minimize2 
+  Minimize2,
+  Brain
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AIResponse } from './AIResponse';
 
 interface QueryResultProps {
   sql: string;
@@ -25,18 +26,25 @@ interface QueryResultProps {
     columns: string[];
     execution_time_ms: number;
     cached?: boolean;
+    ai_provider?: string;
   };
   timestamp: string;
+  aiResponse?: string;
 }
 
-export function QueryResult({ sql, data, metrics, timestamp }: QueryResultProps) {
+export function QueryResult({ sql, data, metrics, timestamp, aiResponse }: QueryResultProps) {
   const [isSqlVisible, setIsSqlVisible] = useState(false);
+  const [isAIResponseVisible, setIsAIResponseVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
   const [copiedSQL, setCopiedSQL] = useState(false);
 
   const toggleSqlVisibility = () => {
     setIsSqlVisible(!isSqlVisible);
+  };
+
+  const toggleAIResponseVisibility = () => {
+    setIsAIResponseVisible(!isAIResponseVisible);
   };
 
   const toggleFullscreen = () => {
@@ -61,7 +69,6 @@ export function QueryResult({ sql, data, metrics, timestamp }: QueryResultProps)
     }
 
     try {
-      // Convert data to CSV format
       const headers = Object.keys(data[0]).join(',');
       const rows = data.map(row => 
         Object.values(row)
@@ -70,7 +77,6 @@ export function QueryResult({ sql, data, metrics, timestamp }: QueryResultProps)
       ).join('\n');
       const csv = `${headers}\n${rows}`;
       
-      // Create and trigger download
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -87,7 +93,6 @@ export function QueryResult({ sql, data, metrics, timestamp }: QueryResultProps)
     }
   };
 
-  // Format the timestamp
   const formattedTime = new Date(timestamp).toLocaleString();
 
   return (
@@ -110,6 +115,23 @@ export function QueryResult({ sql, data, metrics, timestamp }: QueryResultProps)
           </CardTitle>
           
           <div className="flex items-center space-x-2">
+            {aiResponse && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={toggleAIResponseVisibility}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Brain className="h-4 w-4 mr-1" />
+                AI Explanation
+                {isAIResponseVisible ? (
+                  <ChevronUp className="h-4 w-4 ml-1" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                )}
+              </Button>
+            )}
+            
             <Button 
               variant="ghost" 
               size="sm" 
@@ -153,6 +175,15 @@ export function QueryResult({ sql, data, metrics, timestamp }: QueryResultProps)
           </div>
         </div>
       </CardHeader>
+      
+      {isAIResponseVisible && aiResponse && (
+        <div className="border-b border-border">
+          <AIResponse 
+            response={aiResponse} 
+            provider={metrics.ai_provider || 'AI'} 
+          />
+        </div>
+      )}
       
       {isSqlVisible && (
         <div className="bg-muted/50 p-4 border-b border-border">
