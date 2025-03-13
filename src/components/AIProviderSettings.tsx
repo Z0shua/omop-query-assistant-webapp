@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Save, X, Key, Bot } from 'lucide-react';
+import { Eye, EyeOff, Save, X, Key, Bot, RefreshCw } from 'lucide-react';
 import { 
   AllCredentials, 
   AzureCredentials, 
@@ -20,12 +19,14 @@ import {
 interface AIProviderSettingsProps {
   onSave: (credentials: Partial<AllCredentials>) => void;
   initialValues: AllCredentials;
+  onTestConnection?: (provider: string, credentials: any) => Promise<boolean>;
 }
 
-export function AIProviderSettings({ onSave, initialValues }: AIProviderSettingsProps) {
+export function AIProviderSettings({ onSave, initialValues, onTestConnection }: AIProviderSettingsProps) {
   const [credentials, setCredentials] = useState<AllCredentials>({...initialValues});
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTouched, setIsTouched] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   const handleProviderChange = (provider: 'azure' | 'anthropic' | 'google' | 'deepseek') => {
     setCredentials(prev => ({
@@ -97,7 +98,6 @@ export function AIProviderSettings({ onSave, initialValues }: AIProviderSettings
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation based on selected provider
     const provider = credentials.selectedProvider;
     let isValid = true;
     let errorMessage = '';
@@ -129,14 +129,12 @@ export function AIProviderSettings({ onSave, initialValues }: AIProviderSettings
       return;
     }
     
-    // Save the credentials
     onSave(credentials);
     toast.success('AI provider settings saved successfully');
     setIsTouched(false);
   };
 
   const handleClear = () => {
-    // Reset the current provider's credentials
     const provider = credentials.selectedProvider;
     const resetCredentials = {...credentials};
     
@@ -167,6 +165,61 @@ export function AIProviderSettings({ onSave, initialValues }: AIProviderSettings
     
     setCredentials(resetCredentials);
     setIsTouched(true);
+  };
+
+  const testConnection = async () => {
+    if (!onTestConnection) {
+      toast.error('Test connection function not provided');
+      return;
+    }
+    
+    const provider = credentials.selectedProvider;
+    setIsTestingConnection(true);
+    
+    try {
+      let isValid = true;
+      let errorMessage = '';
+
+      if (provider === 'azure') {
+        if (!credentials.azure.apiKey || !credentials.azure.endpoint || !credentials.azure.deploymentName) {
+          isValid = false;
+          errorMessage = 'Please fill in all required Azure OpenAI fields';
+        }
+      } else if (provider === 'anthropic') {
+        if (!credentials.anthropic.apiKey) {
+          isValid = false;
+          errorMessage = 'Please provide your Anthropic API key';
+        }
+      } else if (provider === 'google') {
+        if (!credentials.google.apiKey) {
+          isValid = false;
+          errorMessage = 'Please provide your Google AI API key';
+        }
+      } else if (provider === 'deepseek') {
+        if (!credentials.deepseek.apiKey) {
+          isValid = false;
+          errorMessage = 'Please provide your Deepseek API key';
+        }
+      }
+
+      if (!isValid) {
+        toast.error(errorMessage);
+        return;
+      }
+      
+      const providerCredentials = credentials[provider];
+      const success = await onTestConnection(provider, providerCredentials);
+      
+      if (success) {
+        toast.success(`Successfully connected to ${provider} API`);
+      } else {
+        toast.error(`Failed to connect to ${provider} API`);
+      }
+    } catch (error) {
+      toast.error('Error testing connection: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsTestingConnection(false);
+    }
   };
 
   return (
@@ -461,6 +514,30 @@ export function AIProviderSettings({ onSave, initialValues }: AIProviderSettings
                 </div>
               </TabsContent>
             </Tabs>
+            
+            {onTestConnection && (
+              <div className="pt-4">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={testConnection}
+                  disabled={isTestingConnection}
+                  className="w-full"
+                >
+                  {isTestingConnection ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Testing Connection...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Test Connection
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </form>
       </CardContent>
