@@ -10,7 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useCredentials } from '@/hooks/use-credentials';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Brain, AlertTriangle, Database } from 'lucide-react';
+import { Brain, AlertTriangle, Database, Loader } from 'lucide-react';
+import { convertNaturalLanguageToSQL } from '@/utils/nlToSqlConverter';
 
 export default function QueryPage() {
   const location = useLocation();
@@ -89,92 +90,13 @@ export default function QueryPage() {
         toast({
           title: "Missing Database Configuration",
           description: "Please configure either Databricks or a local database in Settings",
-          variant: "default" // Changed from "warning" to "default" as "warning" is not a valid variant
+          variant: "default"
         });
         // We don't return false here because we'll fall back to mock data
       }
     }
     
     return true;
-  };
-
-  const queryAIProvider = async (naturalLanguageQuery: string, sqlQuery: string) => {
-    const provider = credentials.selectedProvider;
-    
-    try {
-      // In a real implementation, this would make an API call to the backend
-      // which would then call the AI provider API with the appropriate credentials
-      
-      // For demonstration, simulate a response after a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Generate a mock AI response based on the query
-      let aiResponse = '';
-      
-      if (naturalLanguageQuery.toLowerCase().includes('gender')) {
-        aiResponse = `
-          <p>This query analyzes the gender distribution of patients in the database.</p>
-          <p>The results show:</p>
-          <ul>
-            <li><strong>Male patients:</strong> 357 (46.9%)</li>
-            <li><strong>Female patients:</strong> 392 (51.4%)</li>
-            <li><strong>Other:</strong> 12 (1.6%)</li>
-          </ul>
-          <p>The SQL query joins the person table with the concept table to retrieve the human-readable gender labels from the concept_name field, rather than just showing the concept IDs.</p>
-        `;
-      } else if (naturalLanguageQuery.toLowerCase().includes('age')) {
-        aiResponse = `
-          <p>This query analyzes the age distribution of patients in the database.</p>
-          <p>The results show a fairly even distribution across age groups:</p>
-          <ul>
-            <li><strong>Children and adolescents (0-17):</strong> 120 patients (15.8%)</li>
-            <li><strong>Young adults (18-34):</strong> 210 patients (27.6%)</li>
-            <li><strong>Middle-aged adults (35-49):</strong> 185 patients (24.3%)</li>
-            <li><strong>Older adults (50-64):</strong> 156 patients (20.5%)</li>
-            <li><strong>Seniors (65+):</strong> 90 patients (11.8%)</li>
-          </ul>
-          <p>The SQL uses a Common Table Expression (CTE) to calculate each patient's age from their birth_datetime, and then groups them into standard age brackets.</p>
-        `;
-      } else if (naturalLanguageQuery.toLowerCase().includes('diagnoses')) {
-        aiResponse = `
-          <p>This query shows the top 10 most common diagnoses in the database.</p>
-          <p>Key findings:</p>
-          <ul>
-            <li>Essential hypertension is the most common diagnosis (125 patients)</li>
-            <li>Cardiometabolic conditions (hypertension, hyperlipidemia, diabetes) represent 3 of the top 10 diagnoses</li>
-            <li>Mental health conditions (anxiety, depression) are also prevalent</li>
-          </ul>
-          <p>The SQL joins the condition_occurrence table with the concept table to get the human-readable diagnosis names rather than just concept IDs.</p>
-        `;
-      } else {
-        aiResponse = `
-          <p>I've analyzed your query: "${naturalLanguageQuery}"</p>
-          <p>The SQL retrieves patient demographic information along with the count of distinct medical conditions for each patient. Here's what it's doing:</p>
-          <ol>
-            <li>Selecting basic patient information (ID, birth year)</li>
-            <li>Joining with the concept table to get the human-readable gender description</li>
-            <li>Left joining with condition_occurrence to count conditions</li>
-            <li>Grouping by patient to get one row per person</li>
-            <li>Ordering by condition count to show patients with the most conditions first</li>
-            <li>Limiting results to 20 patients</li>
-          </ol>
-          <p>This gives you a view of which patients have the most recorded conditions, which might be useful for identifying patients with complex medical histories or high utilization.</p>
-        `;
-      }
-      
-      return {
-        success: true,
-        response: aiResponse,
-        provider: getProviderName()
-      };
-    } catch (error) {
-      console.error('Error querying AI provider:', error);
-      return {
-        success: false,
-        response: 'Failed to process query through AI provider.',
-        provider: getProviderName()
-      };
-    }
   };
 
   const handleQuerySubmit = async (queryText: string) => {
@@ -186,36 +108,42 @@ export default function QueryPage() {
       // Check which database to use
       const usingDatabricks = credentials.databricks.host && credentials.databricks.token;
       
-      // In a real implementation, we would make different API calls based on the selected AI provider and database
-      // For demonstration purposes, we'll use the mock data generator
+      // Convert natural language to SQL using the AI provider
+      const nlToSqlResult = await convertNaturalLanguageToSQL(queryText, credentials);
       
-      // Simulate API call to the backend (would be a real API call in production)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!nlToSqlResult.success) {
+        toast({
+          title: "Error generating SQL",
+          description: nlToSqlResult.error || "Failed to convert natural language to SQL",
+          variant: "destructive"
+        });
+        setProcessingQuery(false);
+        return;
+      }
       
-      // Simulate a successful response
-      const mockSql = generateMockSql(queryText);
+      // Use the generated SQL to query the database
+      // For demonstration, we'll use mock data
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate database query time
       const mockData = generateMockData(queryText);
-      
-      // Get AI explanation for the query
-      const aiResult = await queryAIProvider(queryText, mockSql);
       
       const mockMetrics = {
         rows: mockData.length,
         columns: mockData.length > 0 ? Object.keys(mockData[0]) : [],
         execution_time_ms: Math.random() * 1000 + 200,
         database_type: usingDatabricks ? 'Databricks' : 'DuckDB',
-        ai_provider: getProviderName()
+        ai_provider: nlToSqlResult.provider || getProviderName(),
+        cached: false
       };
       
       // Add to history
       const queryResult = {
         id: Date.now().toString(),
         query: queryText,
-        sql: mockSql,
+        sql: nlToSqlResult.sql || "",
         data: mockData,
         metrics: mockMetrics,
         timestamp: new Date().toISOString(),
-        aiResponse: aiResult.response
+        aiResponse: nlToSqlResult.explanation || ""
       };
       
       setQueryHistory(prev => [queryResult, ...prev]);
@@ -239,69 +167,16 @@ export default function QueryPage() {
     handleQuerySubmit(example);
   };
 
-  // Mock functions to generate sample data for demonstration
-  const generateMockSql = (query: string): string => {
-    if (query.toLowerCase().includes('gender')) {
-      return `SELECT gender_concept_id, concept_name as gender, COUNT(*) as count
-FROM person
-JOIN concept ON person.gender_concept_id = concept.concept_id
-GROUP BY gender_concept_id, concept_name
-ORDER BY count DESC`;
-    } else if (query.toLowerCase().includes('age')) {
-      return `WITH age_calc AS (
-  SELECT
-    FLOOR((JULIANDAY('now') - JULIANDAY(birth_datetime)) / 365.25) as age
-  FROM person
-)
-SELECT
-  CASE
-    WHEN age < 18 THEN '0-17'
-    WHEN age BETWEEN 18 AND 34 THEN '18-34'
-    WHEN age BETWEEN 35 AND 49 THEN '35-49'
-    WHEN age BETWEEN 50 AND 64 THEN '50-64'
-    WHEN age >= 65 THEN '65+'
-  END as age_group,
-  COUNT(*) as count
-FROM age_calc
-GROUP BY age_group
-ORDER BY age_group`;
-    } else if (query.toLowerCase().includes('diagnoses')) {
-      return `SELECT c.concept_name as diagnosis, COUNT(*) as count
-FROM condition_occurrence co
-JOIN concept c ON co.condition_concept_id = c.concept_id
-GROUP BY c.concept_name
-ORDER BY count DESC
-LIMIT 10`;
-    } else {
-      return `-- Generated SQL for: ${query}
--- Using ${getProviderName()} and ${getDatabaseTypeName()}
-SELECT 
-  p.person_id,
-  p.year_of_birth,
-  c.concept_name as gender,
-  COUNT(DISTINCT co.condition_occurrence_id) as condition_count
-FROM 
-  person p
-JOIN 
-  concept c ON p.gender_concept_id = c.concept_id
-LEFT JOIN 
-  condition_occurrence co ON p.person_id = co.person_id
-GROUP BY 
-  p.person_id, p.year_of_birth, c.concept_name
-ORDER BY 
-  condition_count DESC
-LIMIT 20`;
-    }
-  };
-
   const generateMockData = (query: string): any[] => {
-    if (query.toLowerCase().includes('gender')) {
+    const lowercaseQuery = query.toLowerCase();
+    
+    if (lowercaseQuery.includes('gender')) {
       return [
         { gender_concept_id: 8507, gender: 'Male', count: 357 },
         { gender_concept_id: 8532, gender: 'Female', count: 392 },
         { gender_concept_id: 8521, gender: 'Other', count: 12 },
       ];
-    } else if (query.toLowerCase().includes('age')) {
+    } else if (lowercaseQuery.includes('age')) {
       return [
         { age_group: '0-17', count: 120 },
         { age_group: '18-34', count: 210 },
@@ -309,7 +184,7 @@ LIMIT 20`;
         { age_group: '50-64', count: 156 },
         { age_group: '65+', count: 90 },
       ];
-    } else if (query.toLowerCase().includes('diagnoses')) {
+    } else if (lowercaseQuery.includes('diagnoses') || lowercaseQuery.includes('conditions')) {
       return [
         { diagnosis: 'Essential hypertension', count: 125 },
         { diagnosis: 'Hyperlipidemia', count: 98 },
@@ -322,8 +197,25 @@ LIMIT 20`;
         { diagnosis: 'Gastroesophageal reflux disease', count: 49 },
         { diagnosis: 'Osteoarthritis', count: 43 },
       ];
+    } else if (lowercaseQuery.includes('diabetes')) {
+      return [
+        { patient_count: 87 }
+      ];
+    } else if (lowercaseQuery.includes('medications') || lowercaseQuery.includes('drugs')) {
+      return [
+        { medication_name: 'Lisinopril', patient_count: 78 },
+        { medication_name: 'Atorvastatin', patient_count: 65 },
+        { medication_name: 'Metformin', patient_count: 59 },
+        { medication_name: 'Amlodipine', patient_count: 52 },
+        { medication_name: 'Omeprazole', patient_count: 48 },
+        { medication_name: 'Levothyroxine', patient_count: 45 },
+        { medication_name: 'Simvastatin', patient_count: 41 },
+        { medication_name: 'Metoprolol', patient_count: 39 },
+        { medication_name: 'Hydrochlorothiazide', patient_count: 35 },
+        { medication_name: 'Ibuprofen', patient_count: 32 },
+      ];
     } else {
-      // Generic sample data
+      // Generic sample data for other queries
       return Array.from({ length: 10 }, (_, i) => ({
         person_id: 1000 + i,
         year_of_birth: Math.floor(Math.random() * 50) + 1950,
@@ -520,7 +412,6 @@ LIMIT 20`;
     </Layout>
   );
   
-  // Helper function to check credentials for the alert
   function checkCredentialsForAlert() {
     const provider = credentials.selectedProvider;
     
@@ -538,7 +429,6 @@ LIMIT 20`;
     }
   }
   
-  // Helper function to get friendly provider name
   function getProviderName() {
     const provider = credentials.selectedProvider;
     
@@ -556,7 +446,6 @@ LIMIT 20`;
     }
   }
   
-  // Helper function to get database type name
   function getDatabaseTypeName() {
     return (credentials.databricks.host && credentials.databricks.token) 
       ? 'Databricks SQL' 
