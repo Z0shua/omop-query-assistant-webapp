@@ -108,13 +108,54 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
   try {
     console.log("Calling Azure OpenAI with:", { endpoint: credentials.endpoint, deploymentName: credentials.deploymentName });
     
-    // In a real implementation, this would call the Azure OpenAI API
-    // For demonstration purposes, we'll simulate a response
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!credentials.apiKey || !credentials.endpoint || !credentials.deploymentName) {
+      return {
+        success: false,
+        error: "Missing Azure OpenAI credentials",
+        provider: 'Azure OpenAI'
+      };
+    }
+    
+    // Make actual API call to Azure OpenAI
+    const response = await fetch(`${credentials.endpoint}/openai/deployments/${credentials.deploymentName}/chat/completions?api-version=${credentials.apiVersion}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': credentials.apiKey
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: OMOP_SYSTEM_PROMPT },
+          { role: "user", content: query }
+        ],
+        temperature: 0.3,
+        max_tokens: 800
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Azure OpenAI API error:", errorData);
+      return {
+        success: false,
+        error: `Azure OpenAI API error: ${response.status} ${response.statusText}`,
+        provider: 'Azure OpenAI'
+      };
+    }
+    
+    const responseData = await response.json();
+    const content = responseData.choices[0]?.message?.content;
+    
+    if (!content) {
+      return {
+        success: false,
+        error: "No content returned from Azure OpenAI",
+        provider: 'Azure OpenAI'
+      };
+    }
     
     // Parse the response to extract SQL query and explanation
-    const sql = generateDemoSQL(query);
-    const explanation = generateDemoExplanation(query);
+    const { sql, explanation } = parseAIResponse(content);
     
     return {
       success: true,
@@ -137,13 +178,55 @@ async function callAnthropic(query: string, credentials: AllCredentials['anthrop
   try {
     console.log("Calling Anthropic with model:", credentials.modelName);
     
-    // In a real implementation, this would call the Anthropic API
-    // For demonstration purposes, we'll simulate a response
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!credentials.apiKey) {
+      return {
+        success: false,
+        error: "Missing Anthropic API key",
+        provider: 'Anthropic Claude'
+      };
+    }
+    
+    // Make actual API call to Anthropic
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': credentials.apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: credentials.modelName,
+        messages: [
+          { role: "user", content: `${OMOP_SYSTEM_PROMPT}\n\n${query}` }
+        ],
+        max_tokens: 800,
+        temperature: 0.3
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Anthropic API error:", errorData);
+      return {
+        success: false,
+        error: `Anthropic API error: ${response.status} ${response.statusText}`,
+        provider: 'Anthropic Claude'
+      };
+    }
+    
+    const responseData = await response.json();
+    const content = responseData.content?.[0]?.text;
+    
+    if (!content) {
+      return {
+        success: false,
+        error: "No content returned from Anthropic",
+        provider: 'Anthropic Claude'
+      };
+    }
     
     // Parse the response to extract SQL query and explanation
-    const sql = generateDemoSQL(query);
-    const explanation = generateDemoExplanation(query);
+    const { sql, explanation } = parseAIResponse(content);
     
     return {
       success: true,
@@ -166,13 +249,54 @@ async function callGoogleAI(query: string, credentials: AllCredentials['google']
   try {
     console.log("Calling Google AI with model:", credentials.modelName);
     
-    // In a real implementation, this would call the Google AI API
-    // For demonstration purposes, we'll simulate a response
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!credentials.apiKey) {
+      return {
+        success: false,
+        error: "Missing Google AI API key",
+        provider: 'Google AI'
+      };
+    }
+    
+    // Make actual API call to Google AI
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${credentials.modelName}:generateContent?key=${credentials.apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [
+          { role: "user", parts: [{ text: `${OMOP_SYSTEM_PROMPT}\n\n${query}` }] }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 800
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Google AI API error:", errorData);
+      return {
+        success: false,
+        error: `Google AI API error: ${response.status} ${response.statusText}`,
+        provider: 'Google AI'
+      };
+    }
+    
+    const responseData = await response.json();
+    const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!content) {
+      return {
+        success: false,
+        error: "No content returned from Google AI",
+        provider: 'Google AI'
+      };
+    }
     
     // Parse the response to extract SQL query and explanation
-    const sql = generateDemoSQL(query);
-    const explanation = generateDemoExplanation(query);
+    const { sql, explanation } = parseAIResponse(content);
     
     return {
       success: true,
@@ -195,13 +319,55 @@ async function callDeepseek(query: string, credentials: AllCredentials['deepseek
   try {
     console.log("Calling Deepseek with model:", credentials.modelName);
     
-    // In a real implementation, this would call the Deepseek API
-    // For demonstration purposes, we'll simulate a response
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!credentials.apiKey) {
+      return {
+        success: false,
+        error: "Missing Deepseek API key",
+        provider: 'Deepseek'
+      };
+    }
+    
+    // Make actual API call to Deepseek
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${credentials.apiKey}`
+      },
+      body: JSON.stringify({
+        model: credentials.modelName,
+        messages: [
+          { role: "system", content: OMOP_SYSTEM_PROMPT },
+          { role: "user", content: query }
+        ],
+        temperature: 0.3,
+        max_tokens: 800
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Deepseek API error:", errorData);
+      return {
+        success: false,
+        error: `Deepseek API error: ${response.status} ${response.statusText}`,
+        provider: 'Deepseek'
+      };
+    }
+    
+    const responseData = await response.json();
+    const content = responseData.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      return {
+        success: false,
+        error: "No content returned from Deepseek",
+        provider: 'Deepseek'
+      };
+    }
     
     // Parse the response to extract SQL query and explanation
-    const sql = generateDemoSQL(query);
-    const explanation = generateDemoExplanation(query);
+    const { sql, explanation } = parseAIResponse(content);
     
     return {
       success: true,
@@ -219,169 +385,144 @@ async function callDeepseek(query: string, credentials: AllCredentials['deepseek
   }
 }
 
-// Demo SQL generation based on query type (for demonstration purposes)
-function generateDemoSQL(query: string): string {
-  const lowercaseQuery = query.toLowerCase();
+// Helper function to parse AI response and separate SQL from explanation
+function parseAIResponse(content: string): { sql: string, explanation: string } {
+  // For demo purposes, we'll generate mock responses
+  // In a real implementation, you would parse the actual AI response
   
-  if (lowercaseQuery.includes('gender')) {
-    return `SELECT gender_concept_id, concept_name as gender, COUNT(*) as count
-FROM person
-JOIN concept ON person.gender_concept_id = concept.concept_id
-GROUP BY gender_concept_id, concept_name
-ORDER BY count DESC`;
-  } 
-  else if (lowercaseQuery.includes('age')) {
-    return `WITH age_calc AS (
-  SELECT
-    FLOOR((JULIANDAY('now') - JULIANDAY(birth_datetime)) / 365.25) as age
-  FROM person
-)
-SELECT
-  CASE
-    WHEN age < 18 THEN '0-17'
-    WHEN age BETWEEN 18 AND 34 THEN '18-34'
-    WHEN age BETWEEN 35 AND 49 THEN '35-49'
-    WHEN age BETWEEN 50 AND 64 THEN '50-64'
-    WHEN age >= 65 THEN '65+'
-  END as age_group,
-  COUNT(*) as count
-FROM age_calc
-GROUP BY age_group
-ORDER BY age_group`;
-  } 
-  else if (lowercaseQuery.includes('diagnoses') || lowercaseQuery.includes('conditions')) {
-    return `SELECT c.concept_name as diagnosis, COUNT(*) as count
-FROM condition_occurrence co
-JOIN concept c ON co.condition_concept_id = c.concept_id
-GROUP BY c.concept_name
-ORDER BY count DESC
-LIMIT 10`;
-  } 
-  else if (lowercaseQuery.includes('diabetes')) {
-    return `SELECT count(distinct p.person_id) as patient_count
-FROM person p
-JOIN condition_occurrence co ON p.person_id = co.person_id
-JOIN concept c ON co.condition_concept_id = c.concept_id
-WHERE c.concept_name LIKE '%Type 2 diabetes%'
-  AND c.domain_id = 'Condition'`;
+  // Try to extract SQL code that's between SQL code blocks or after "SQL:" markers
+  let sql = '';
+  let explanation = '';
+  
+  // Check for SQL code blocks
+  const sqlBlockMatch = content.match(/```sql\s+([\s\S]*?)\s+```/i);
+  if (sqlBlockMatch) {
+    sql = sqlBlockMatch[1].trim();
+    
+    // Everything after the last SQL block is likely explanation
+    const lastSqlBlockEnd = content.lastIndexOf('```');
+    if (lastSqlBlockEnd !== -1 && lastSqlBlockEnd + 3 < content.length) {
+      explanation = content.substring(lastSqlBlockEnd + 3).trim();
+    } else {
+      // If no clear explanation after SQL block, use everything before first SQL block
+      const firstSqlBlockStart = content.indexOf('```sql');
+      if (firstSqlBlockStart > 0) {
+        explanation = content.substring(0, firstSqlBlockStart).trim();
+      }
+    }
+  } else {
+    // Try to find SQL by looking for "SQL:" marker
+    const sqlMarkerMatch = content.match(/SQL:\s*([\s\S]*?)(?=\n\n|$)/i);
+    if (sqlMarkerMatch) {
+      sql = sqlMarkerMatch[1].trim();
+      
+      // Everything after the SQL and a blank line is likely explanation
+      const parts = content.split(/\n\s*\n/);
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i].includes(sql)) {
+          explanation = parts.slice(i + 1).join('\n\n').trim();
+          break;
+        }
+      }
+      
+      if (!explanation && parts.length > 0) {
+        explanation = parts[0].includes('SQL:') 
+          ? 'No detailed explanation provided.' 
+          : parts[0].trim();
+      }
+    } else {
+      // No clear SQL format, try to use heuristics
+      const lines = content.split('\n');
+      const sqlLines = [];
+      const explLines = [];
+      
+      let inSqlSection = false;
+      for (const line of lines) {
+        // SQL queries usually start with SELECT, WITH, etc.
+        if (!inSqlSection && 
+            (line.trim().toUpperCase().startsWith('SELECT') || 
+             line.trim().toUpperCase().startsWith('WITH'))) {
+          inSqlSection = true;
+        }
+        
+        if (inSqlSection) {
+          sqlLines.push(line);
+          // If we see a line ending with semicolon followed by a blank line,
+          // assume SQL section is done
+          if (line.trim().endsWith(';') || 
+              line.trim().toLowerCase().includes('limit ')) {
+            inSqlSection = false;
+          }
+        } else {
+          explLines.push(line);
+        }
+      }
+      
+      sql = sqlLines.join('\n').trim();
+      explanation = explLines.join('\n').trim();
+      
+      // If we couldn't extract SQL, use entire content as explanation
+      if (!sql) {
+        explanation = content;
+        sql = "-- Could not extract SQL query from AI response";
+      }
+    }
   }
-  else if (lowercaseQuery.includes('medications') || lowercaseQuery.includes('drugs')) {
-    return `SELECT c.concept_name as medication_name, COUNT(DISTINCT de.person_id) as patient_count
-FROM drug_exposure de
-JOIN concept c ON de.drug_concept_id = c.concept_id
-WHERE c.domain_id = 'Drug'
-GROUP BY c.concept_name
-ORDER BY patient_count DESC
-LIMIT 20`;
-  }
-  else {
-    return `-- Generated SQL query for: ${query}
-SELECT 
-  p.person_id,
-  p.year_of_birth,
-  c.concept_name as gender,
-  COUNT(DISTINCT co.condition_occurrence_id) as condition_count
-FROM 
-  person p
-JOIN 
-  concept c ON p.gender_concept_id = c.concept_id
-LEFT JOIN 
-  condition_occurrence co ON p.person_id = co.person_id
-GROUP BY 
-  p.person_id, p.year_of_birth, c.concept_name
-ORDER BY 
-  condition_count DESC
-LIMIT 20`;
-  }
+  
+  // Format explanation for HTML display
+  explanation = formatExplanation(explanation);
+  
+  return { sql, explanation };
 }
 
-// Demo explanation generation (for demonstration purposes)
-function generateDemoExplanation(query: string): string {
-  const lowercaseQuery = query.toLowerCase();
+// Format explanation for HTML display
+function formatExplanation(text: string): string {
+  // Simple formatting for demo purposes
+  let htmlFormatted = '<p>' + text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>') + '</p>';
   
-  if (lowercaseQuery.includes('gender')) {
-    return `
-<p>This query analyzes the gender distribution of patients in the OMOP database.</p>
-<p>I used:</p>
-<ul>
-  <li>The <code>person</code> table which contains patient demographics including gender</li>
-  <li>A join with the <code>concept</code> table to get human-readable gender descriptions instead of concept IDs</li>
-  <li>Grouped by both concept ID and name to ensure accurate counts</li>
-  <li>Ordered by count to show most frequent genders first</li>
-</ul>
-<p>This follows OMOP best practices by using standardized concepts for gender representation.</p>
-`;
-  } 
-  else if (lowercaseQuery.includes('age')) {
-    return `
-<p>This query analyzes the age distribution of patients by grouping them into standard age brackets.</p>
-<p>I implemented this using:</p>
-<ul>
-  <li>A Common Table Expression (CTE) to calculate each patient's age from birth_datetime</li>
-  <li>The JULIANDAY function to handle date arithmetic correctly</li>
-  <li>A CASE statement to group patients into standard age brackets (0-17, 18-34, 35-49, 50-64, 65+)</li>
-  <li>GROUP BY and COUNT to get the number of patients in each bracket</li>
-</ul>
-<p>This approach follows clinical research conventions for age grouping and ensures that each patient is counted exactly once.</p>
-`;
-  } 
-  else if (lowercaseQuery.includes('diagnoses') || lowercaseQuery.includes('conditions')) {
-    return `
-<p>This query extracts the top 10 most common diagnoses in the database.</p>
-<p>Key implementation details:</p>
-<ul>
-  <li>Used the <code>condition_occurrence</code> table which stores all patient conditions</li>
-  <li>Joined with <code>concept</code> table to translate condition concept IDs to human-readable names</li>
-  <li>Grouped by concept name to count unique diagnoses</li>
-  <li>Ordered by count descending to show most common conditions first</li>
-  <li>Limited results to top 10 for clarity</li>
-</ul>
-<p>This query follows OMOP best practices by using the standard relationship between condition_occurrence and concept tables.</p>
-`;
-  }
-  else if (lowercaseQuery.includes('diabetes')) {
-    return `
-<p>This query counts patients with Type 2 diabetes in the database.</p>
-<p>Implementation approach:</p>
-<ul>
-  <li>Start with the <code>person</code> table to get unique patients</li>
-  <li>Join to <code>condition_occurrence</code> to find their conditions</li>
-  <li>Join to <code>concept</code> to get standardized condition names</li>
-  <li>Filter for Type 2 diabetes using LIKE operator for flexible matching</li>
-  <li>Added domain_id = 'Condition' to ensure we're looking at diagnosis concepts</li>
-  <li>Count distinct person_ids to avoid counting patients multiple times</li>
-</ul>
-<p>This query uses OMOP's standardized vocabulary approach while allowing for variations in how Type 2 diabetes might be recorded.</p>
-`;
-  }
-  else if (lowercaseQuery.includes('medications') || lowercaseQuery.includes('drugs')) {
-    return `
-<p>This query identifies the most commonly prescribed medications and the number of patients receiving each.</p>
-<p>Key query components:</p>
-<ul>
-  <li>Used the <code>drug_exposure</code> table which contains all medication records</li>
-  <li>Joined with <code>concept</code> table to get standardized medication names</li>
-  <li>Ensured only drug concepts are included with domain_id filter</li>
-  <li>Counted distinct patients per medication to avoid counting multiple prescriptions</li>
-  <li>Ordered by patient count to show most widely used medications first</li>
-  <li>Limited to 20 results for readability</li>
-</ul>
-<p>This implementation follows OMOP CDM best practices for medication analysis by using standardized concepts and avoiding duplicate counting.</p>
-`;
-  }
-  else {
-    return `
-<p>I've analyzed your query: "${query}"</p>
-<p>The SQL retrieves patient demographic information along with the count of distinct medical conditions for each patient. Here's what it's doing:</p>
-<ol>
-  <li>Selecting basic patient information (ID, birth year) from the <code>person</code> table</li>
-  <li>Joining with the <code>concept</code> table to get the human-readable gender description</li>
-  <li>Left joining with <code>condition_occurrence</code> to count conditions</li>
-  <li>Grouping by patient to get one row per person</li>
-  <li>Ordering by condition count to show patients with the most conditions first</li>
-  <li>Limiting results to 20 patients</li>
-</ol>
-<p>This follows OMOP best practices by using the standard person-to-condition relationship and proper concept lookups for standardized terminologies.</p>
-`;
+  // Convert markdown-style lists to HTML lists
+  htmlFormatted = htmlFormatted.replace(/<p>(\s*[-*]\s+.*?)<\/p>/g, '<ul><li>$1</li></ul>');
+  htmlFormatted = htmlFormatted.replace(/<br>\s*[-*]\s+/g, '</li><li>');
+  
+  // Add code styling
+  htmlFormatted = htmlFormatted.replace(/`(.*?)`/g, '<code>$1</code>');
+  
+  return htmlFormatted;
+}
+
+// Mock functions for connection testing
+export async function testProviderConnection(
+  provider: string, 
+  credentials: any
+): Promise<boolean> {
+  console.log(`Testing connection to ${provider} with credentials:`, credentials);
+  
+  try {
+    // Simple test prompt
+    const testPrompt = "Convert this to SQL: How many patients are in the database?";
+    
+    let result: NLtoSQLResult;
+    
+    switch (provider) {
+      case 'azure':
+        result = await callAzureOpenAI(testPrompt, credentials);
+        break;
+      case 'anthropic':
+        result = await callAnthropic(testPrompt, credentials);
+        break;
+      case 'google':
+        result = await callGoogleAI(testPrompt, credentials);
+        break;
+      case 'deepseek':
+        result = await callDeepseek(testPrompt, credentials);
+        break;
+      default:
+        return false;
+    }
+    
+    return result.success;
+  } catch (error) {
+    console.error(`Error testing ${provider} connection:`, error);
+    return false;
   }
 }
