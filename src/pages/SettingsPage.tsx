@@ -61,9 +61,16 @@ export default function SettingsPage() {
             onSave={(config) => {
               // Update the databricks credentials when database settings are saved
               setCredentials({ databricks: config });
-              toast.success("Database settings saved successfully");
+              // Using toast from useToast hook correctly
+              toast({
+                title: "Success",
+                description: "Database settings saved successfully"
+              });
             }}
-            initialValues={credentials.databricks}
+            initialValues={{
+              duckdbPath: credentials.databricks?.host || '',
+              logDbPath: credentials.databricks?.catalog || ''
+            }}
           />
         </TabsContent>
       </Tabs>
