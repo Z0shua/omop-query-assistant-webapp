@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { testProviderConnection } from '@/utils/nlToSqlConverter';
 
 export default function SettingsPage() {
-  const { credentials, updateCredentials } = useCredentials();
+  const { credentials, setCredentials } = useCredentials();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("ai-providers");
 
@@ -51,13 +51,20 @@ export default function SettingsPage() {
         <TabsContent value="ai-providers" className="space-y-4">
           <AIProviderSettings 
             initialValues={credentials}
-            onSave={updateCredentials}
+            onSave={setCredentials}
             onTestConnection={testAIProviderConnection}
           />
         </TabsContent>
         
         <TabsContent value="database" className="space-y-4">
-          <DatabaseSettings />
+          <DatabaseSettings 
+            onSave={(config) => {
+              // Update the databricks credentials when database settings are saved
+              setCredentials({ databricks: config });
+              toast.success("Database settings saved successfully");
+            }}
+            initialValues={credentials.databricks}
+          />
         </TabsContent>
       </Tabs>
     </Layout>
