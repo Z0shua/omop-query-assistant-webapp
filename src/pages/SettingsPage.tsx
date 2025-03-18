@@ -10,20 +10,22 @@ import { useToast } from '@/hooks/use-toast';
 import { testProviderConnection } from '@/utils/nlToSqlConverter';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Info, AlertCircle, ExternalLink } from 'lucide-react';
 
 export default function SettingsPage() {
   const { credentials, setCredentials } = useCredentials();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("ai-providers");
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'network' | 'auth' | 'timeout' | 'unknown' | null>(null);
 
   const testAIProviderConnection = async (provider: string, providerCredentials: any) => {
     try {
       console.log(`Testing connection to ${provider}...`);
       
-      // Reset any previous debug info
+      // Reset any previous debug info and error type
       setDebugInfo(null);
+      setErrorType(null);
       
       // Call the actual connection test function
       const result = await testProviderConnection(provider, providerCredentials);
@@ -33,10 +35,29 @@ export default function SettingsPage() {
         return true;
       } else {
         console.error(`Failed to connect to ${provider}`);
-        // Store debug info for display
+        
+        // Determine error type based on debug info
         if (result.debugInfo) {
           setDebugInfo(result.debugInfo);
+          
+          // Set the error type based on the error message
+          if (result.debugInfo.includes('Failed to fetch') || 
+              result.debugInfo.includes('network') || 
+              result.debugInfo.includes('CORS')) {
+            setErrorType('network');
+          } else if (result.debugInfo.includes('Authentication') || 
+                    result.debugInfo.includes('Unauthorized') || 
+                    result.debugInfo.includes('API key') || 
+                    result.debugInfo.includes('token')) {
+            setErrorType('auth');
+          } else if (result.debugInfo.includes('timeout') || 
+                    result.debugInfo.includes('timed out')) {
+            setErrorType('timeout');
+          } else {
+            setErrorType('unknown');
+          }
         }
+        
         return false;
       }
     } catch (error) {
@@ -44,6 +65,7 @@ export default function SettingsPage() {
       setDebugInfo(error instanceof Error 
         ? `${error.name}: ${error.message}\n${error.stack}` 
         : `Unknown error: ${JSON.stringify(error)}`);
+      setErrorType('unknown');
       return false;
     }
   };
@@ -58,9 +80,12 @@ export default function SettingsPage() {
       </div>
 
       {debugInfo && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" className="mb-6">
           <AlertTitle className="flex items-center justify-between">
-            <span>Connection Error Debug Information</span>
+            <div className="flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <span>Connection Error Debug Information</span>
+            </div>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -74,9 +99,82 @@ export default function SettingsPage() {
             <div className="bg-muted p-2 rounded-md mt-2 overflow-auto max-h-[300px]">
               <pre className="text-xs whitespace-pre-wrap">{debugInfo}</pre>
             </div>
-            <div className="mt-2 text-sm">
-              This information can help diagnose API connection issues. Please check your 
-              credentials, network connectivity, and API service status.
+            
+            {errorType === 'network' && (
+              <Alert variant="default" className="mt-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Network Connection Issue</AlertTitle>
+                <AlertDescription>
+                  <p className="mt-2">This appears to be a network connectivity issue. Try these steps:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                    <li>Check if your internet connection is working properly</li>
+                    <li>Verify that you're not behind a restrictive firewall or VPN</li>
+                    <li>Ensure the API endpoint URL is correct and accessible</li>
+                    <li>Check if the API service is operational</li>
+                    <li>Try using a different browser or device</li>
+                  </ul>
+                  <p className="mt-2 text-sm">
+                    <strong>CORS errors:</strong> If you're seeing "Failed to fetch" errors, this could be due to 
+                    Cross-Origin Resource Sharing (CORS) restrictions. These typically can't be fixed from your side 
+                    but may require using a different endpoint or API provider.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {errorType === 'auth' && (
+              <Alert variant="default" className="mt-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Authentication Issue</AlertTitle>
+                <AlertDescription>
+                  <p className="mt-2">This appears to be an authentication issue. Try these steps:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                    <li>Verify that your API key or token is correct and not expired</li>
+                    <li>Check if you have copied the full API key without extra spaces</li>
+                    <li>Ensure your account has the necessary permissions for the selected service</li>
+                    <li>Try generating a new API key if possible</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {errorType === 'timeout' && (
+              <Alert variant="default" className="mt-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Connection Timeout</AlertTitle>
+                <AlertDescription>
+                  <p className="mt-2">The connection to the API timed out. Try these steps:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                    <li>Check if your internet connection is stable and fast enough</li>
+                    <li>The API service might be experiencing high load or outages</li>
+                    <li>Try again later or use a different API provider</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {errorType === 'unknown' && (
+              <Alert variant="default" className="mt-4 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Troubleshooting Suggestions</AlertTitle>
+                <AlertDescription>
+                  <p className="mt-2">Try these general troubleshooting steps:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+                    <li>Verify all your credentials and settings</li>
+                    <li>Check if the service you're trying to connect to is operational</li>
+                    <li>Ensure you're using the correct endpoint URLs and API versions</li>
+                    <li>Try using a different browser or clearing your browser cache</li>
+                    <li>Check the service's status page or documentation for known issues</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => window.open('https://platform.openai.com/status', '_blank')}>
+                <ExternalLink className="h-3 w-3 mr-2" />
+                Check API Service Status
+              </Button>
             </div>
           </AlertDescription>
         </Alert>
@@ -136,6 +234,7 @@ export default function SettingsPage() {
             onTestConnection={async (databricksCredentials) => {
               try {
                 setDebugInfo(null);
+                setErrorType(null);
                 console.log('Testing Databricks connection with:', databricksCredentials);
                 
                 // Use the same test connection function but specify databricks as provider
@@ -146,9 +245,27 @@ export default function SettingsPage() {
                   return true;
                 } else {
                   console.error('Failed to connect to Databricks');
+                  
                   if (result.debugInfo) {
                     setDebugInfo(result.debugInfo);
+                    
+                    // Determine error type based on the error message
+                    if (result.debugInfo.includes('Failed to fetch') || 
+                        result.debugInfo.includes('network') || 
+                        result.debugInfo.includes('CORS')) {
+                      setErrorType('network');
+                    } else if (result.debugInfo.includes('Authentication') || 
+                              result.debugInfo.includes('Unauthorized') || 
+                              result.debugInfo.includes('token')) {
+                      setErrorType('auth');
+                    } else if (result.debugInfo.includes('timeout') || 
+                              result.debugInfo.includes('timed out')) {
+                      setErrorType('timeout');
+                    } else {
+                      setErrorType('unknown');
+                    }
                   }
+                  
                   return false;
                 }
               } catch (error) {
@@ -156,6 +273,7 @@ export default function SettingsPage() {
                 setDebugInfo(error instanceof Error 
                   ? `${error.name}: ${error.message}\n${error.stack}` 
                   : `Unknown error: ${JSON.stringify(error)}`);
+                setErrorType('unknown');
                 return false;
               }
             }}

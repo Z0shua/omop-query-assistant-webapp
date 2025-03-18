@@ -1,4 +1,3 @@
-
 /**
  * Utility for converting natural language queries to SQL for OMOP CDM
  */
@@ -57,6 +56,14 @@ export interface NLtoSQLResult {
   error?: string;
   debugInfo?: string;
   provider?: string;
+  networkDetails?: {
+    status?: number;
+    statusText?: string;
+    url?: string;
+    corsError?: boolean;
+    networkError?: boolean;
+    timeoutError?: boolean;
+  };
 }
 
 export async function convertNaturalLanguageToSQL(
@@ -89,11 +96,48 @@ Return a valid SQL query that follows OMOP CDM conventions and best practices. T
         return await callGoogleAI(formattedQuery, credentials.google);
       case 'deepseek':
         return await callDeepseek(formattedQuery, credentials.deepseek);
+      case 'databricks':
+        // For Databricks, we just test if we can connect to the host
+        if (!credentials.host || !credentials.token) {
+          return {
+            success: false,
+            debugInfo: "Missing required Databricks credentials: host and token are required."
+          };
+        }
+        
+        try {
+          // Attempt to connect to the Databricks API
+          const testUrl = `${credentials.host}/api/2.0/clusters/list`;
+          const response = await enhancedFetch(testUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${credentials.token}`
+            }
+          }, 'Databricks');
+          
+          if (response.ok) {
+            return { success: true };
+          } else {
+            const errorText = await response.text();
+            return {
+              success: false,
+              debugInfo: `Databricks API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+            };
+          }
+        } catch (error) {
+          const networkDetails = (error as any).networkDetails || {};
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          return {
+            success: false,
+            debugInfo: `Failed to connect to Databricks: ${errorMessage}\n\nNetwork details: ${JSON.stringify(networkDetails)}\n\nTroubleshooting tips:\n- Verify that your Databricks host URL is correct and includes the protocol (https://)\n- Ensure your personal access token is valid and has not expired\n- Check if your network allows outbound connections to Databricks\n- Verify you're not behind a firewall or VPN that might block the connection`
+          };
+        }
       default:
         return {
           success: false,
           error: 'Invalid AI provider selected',
-          debugInfo: `Selected provider "${provider}" is not valid. Available providers: azure, anthropic, google, deepseek.`
+          debugInfo: `Selected provider "${provider}" is not valid. Available providers: azure, anthropic, google, deepseek, databricks.`
         };
     }
   } catch (error) {
@@ -103,6 +147,57 @@ Return a valid SQL query that follows OMOP CDM conventions and best practices. T
       error: error instanceof Error ? error.message : 'Unknown error during query conversion',
       debugInfo: `Unhandled exception: ${JSON.stringify(error)}`
     };
+  }
+}
+
+// Enhanced fetch function with better error diagnostics
+async function enhancedFetch(url: string, options: RequestInit, providerName: string): Promise<Response> {
+  try {
+    // Start timing the request
+    const startTime = Date.now();
+    
+    // Add timeout to fetch request using AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    
+    // Clear timeout
+    clearTimeout(timeoutId);
+    
+    // Log response time
+    const responseTime = Date.now() - startTime;
+    console.log(`${providerName} API response time: ${responseTime}ms`);
+    
+    return response;
+  } catch (error) {
+    console.error(`Error fetching from ${providerName} API:`, error);
+    
+    // Enhanced error diagnostics
+    let detailedError = new Error(`Failed to connect to ${providerName} API`);
+    
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      // This typically happens for network errors (offline, DNS failure, CORS, etc.)
+      detailedError = new Error(`Network error connecting to ${providerName} API. This could be due to CORS restrictions, network connectivity issues, or the API endpoint being unavailable.`);
+      (detailedError as any).networkDetails = {
+        url,
+        networkError: true,
+        corsError: true // Possible CORS error
+      };
+    } else if (error instanceof DOMException && error.name === 'AbortError') {
+      detailedError = new Error(`Request to ${providerName} API timed out after 30 seconds`);
+      (detailedError as any).networkDetails = {
+        url,
+        timeoutError: true
+      };
+    }
+    
+    // Add original error information
+    (detailedError as any).originalError = error;
+    throw detailedError;
   }
 }
 
@@ -133,14 +228,14 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
     const apiUrl = `${credentials.endpoint}/openai/deployments/${credentials.deploymentName}/chat/completions?api-version=${credentials.apiVersion}`;
     console.log("Azure API URL:", apiUrl);
     
-    const response = await fetch(apiUrl, {
+    const response = await enhancedFetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': credentials.apiKey
       },
       body: requestBody
-    });
+    }, 'Azure OpenAI');
     
     const responseStatus = response.status;
     const responseStatusText = response.statusText;
@@ -167,7 +262,12 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
         success: false,
         error: `Azure OpenAI API error: ${response.status} ${response.statusText}`,
         debugInfo: `Status: ${responseStatus} ${responseStatusText}\nResponse: ${responseText}\nRequest URL: ${apiUrl}`,
-        provider: 'Azure OpenAI'
+        provider: 'Azure OpenAI',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: apiUrl
+        }
       };
     }
     
@@ -179,7 +279,12 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
         success: false,
         error: "Failed to parse Azure OpenAI response",
         debugInfo: `Status: ${responseStatus} ${responseStatusText}\nResponse: ${responseText}\nParse error: ${error}`,
-        provider: 'Azure OpenAI'
+        provider: 'Azure OpenAI',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: apiUrl
+        }
       };
     }
     
@@ -190,7 +295,12 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
         success: false,
         error: "No content returned from Azure OpenAI",
         debugInfo: `Full response: ${JSON.stringify(responseData)}`,
-        provider: 'Azure OpenAI'
+        provider: 'Azure OpenAI',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: apiUrl
+        }
       };
     }
     
@@ -205,11 +315,15 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
     };
   } catch (error) {
     console.error('Azure OpenAI API error:', error);
+    
+    const networkDetails = (error as any).networkDetails || {};
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error calling Azure OpenAI API',
-      debugInfo: `Exception details: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`,
-      provider: 'Azure OpenAI'
+      debugInfo: `Exception details: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}\n\nTroubleshooting tips:\n- Verify that your Azure OpenAI endpoint is correct and accessible\n- Check if your API key is valid and has appropriate permissions\n- Ensure your deployment name exists in your Azure OpenAI resource\n- Verify your network allows outbound connections to Azure OpenAI endpoints\n- Check if you're behind a corporate firewall or VPN that might block the connection`,
+      provider: 'Azure OpenAI',
+      networkDetails
     };
   }
 }
@@ -228,7 +342,7 @@ async function callAnthropic(query: string, credentials: AllCredentials['anthrop
     }
     
     // Make actual API call to Anthropic
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await enhancedFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -243,15 +357,31 @@ async function callAnthropic(query: string, credentials: AllCredentials['anthrop
         max_tokens: 800,
         temperature: 0.3
       })
-    });
+    }, 'Anthropic');
+    
+    const responseStatus = response.status;
+    const responseStatusText = response.statusText;
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: "Failed to parse error response" };
+      }
+      
       console.error("Anthropic API error:", errorData);
       return {
         success: false,
         error: `Anthropic API error: ${response.status} ${response.statusText}`,
-        provider: 'Anthropic Claude'
+        debugInfo: `Status: ${responseStatus} ${responseStatusText}\nResponse: ${errorText}`,
+        provider: 'Anthropic Claude',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: 'https://api.anthropic.com/v1/messages'
+        }
       };
     }
     
@@ -262,7 +392,13 @@ async function callAnthropic(query: string, credentials: AllCredentials['anthrop
       return {
         success: false,
         error: "No content returned from Anthropic",
-        provider: 'Anthropic Claude'
+        debugInfo: `Full response: ${JSON.stringify(responseData)}`,
+        provider: 'Anthropic Claude',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: 'https://api.anthropic.com/v1/messages'
+        }
       };
     }
     
@@ -277,10 +413,15 @@ async function callAnthropic(query: string, credentials: AllCredentials['anthrop
     };
   } catch (error) {
     console.error('Anthropic API error:', error);
+    
+    const networkDetails = (error as any).networkDetails || {};
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error calling Anthropic API',
-      provider: 'Anthropic Claude'
+      debugInfo: `Exception details: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}\n\nTroubleshooting tips:\n- Verify that your Anthropic API key is valid and has not expired\n- Ensure your network allows outbound connections to Anthropic API endpoints\n- Check if you're behind a corporate firewall or VPN that might block the connection\n- Confirm that the Anthropic service is currently operational`,
+      provider: 'Anthropic Claude',
+      networkDetails
     };
   }
 }
@@ -298,8 +439,10 @@ async function callGoogleAI(query: string, credentials: AllCredentials['google']
       };
     }
     
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${credentials.modelName}:generateContent?key=${credentials.apiKey}`;
+    
     // Make actual API call to Google AI
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${credentials.modelName}:generateContent?key=${credentials.apiKey}`, {
+    const response = await enhancedFetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -313,15 +456,31 @@ async function callGoogleAI(query: string, credentials: AllCredentials['google']
           maxOutputTokens: 800
         }
       })
-    });
+    }, 'Google AI');
+    
+    const responseStatus = response.status;
+    const responseStatusText = response.statusText;
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: "Failed to parse error response" };
+      }
+      
       console.error("Google AI API error:", errorData);
       return {
         success: false,
         error: `Google AI API error: ${response.status} ${response.statusText}`,
-        provider: 'Google AI'
+        debugInfo: `Status: ${responseStatus} ${responseStatusText}\nResponse: ${errorText}\nRequest URL: ${apiUrl}`,
+        provider: 'Google AI',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: apiUrl
+        }
       };
     }
     
@@ -332,7 +491,13 @@ async function callGoogleAI(query: string, credentials: AllCredentials['google']
       return {
         success: false,
         error: "No content returned from Google AI",
-        provider: 'Google AI'
+        debugInfo: `Full response: ${JSON.stringify(responseData)}`,
+        provider: 'Google AI',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: apiUrl
+        }
       };
     }
     
@@ -347,10 +512,15 @@ async function callGoogleAI(query: string, credentials: AllCredentials['google']
     };
   } catch (error) {
     console.error('Google AI API error:', error);
+    
+    const networkDetails = (error as any).networkDetails || {};
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error calling Google AI API',
-      provider: 'Google AI'
+      debugInfo: `Exception details: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}\n\nTroubleshooting tips:\n- Verify that your Google AI API key is valid and has appropriate permissions\n- Ensure the model name you've specified exists and is accessible with your API key\n- Check if your network allows outbound connections to Google API endpoints\n- Verify you're not exceeding Google AI API rate limits\n- Check if you're behind a corporate firewall or VPN that might block the connection`,
+      provider: 'Google AI',
+      networkDetails
     };
   }
 }
@@ -369,7 +539,7 @@ async function callDeepseek(query: string, credentials: AllCredentials['deepseek
     }
     
     // Make actual API call to Deepseek
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    const response = await enhancedFetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -384,15 +554,31 @@ async function callDeepseek(query: string, credentials: AllCredentials['deepseek
         temperature: 0.3,
         max_tokens: 800
       })
-    });
+    }, 'Deepseek');
+    
+    const responseStatus = response.status;
+    const responseStatusText = response.statusText;
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: "Failed to parse error response" };
+      }
+      
       console.error("Deepseek API error:", errorData);
       return {
         success: false,
         error: `Deepseek API error: ${response.status} ${response.statusText}`,
-        provider: 'Deepseek'
+        debugInfo: `Status: ${responseStatus} ${responseStatusText}\nResponse: ${errorText}`,
+        provider: 'Deepseek',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: 'https://api.deepseek.com/v1/chat/completions'
+        }
       };
     }
     
@@ -403,7 +589,13 @@ async function callDeepseek(query: string, credentials: AllCredentials['deepseek
       return {
         success: false,
         error: "No content returned from Deepseek",
-        provider: 'Deepseek'
+        debugInfo: `Full response: ${JSON.stringify(responseData)}`,
+        provider: 'Deepseek',
+        networkDetails: {
+          status: responseStatus,
+          statusText: responseStatusText,
+          url: 'https://api.deepseek.com/v1/chat/completions'
+        }
       };
     }
     
@@ -418,10 +610,15 @@ async function callDeepseek(query: string, credentials: AllCredentials['deepseek
     };
   } catch (error) {
     console.error('Deepseek API error:', error);
+    
+    const networkDetails = (error as any).networkDetails || {};
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error calling Deepseek API',
-      provider: 'Deepseek'
+      debugInfo: `Exception details: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}\n\nTroubleshooting tips:\n- Verify that your Deepseek API key is valid and has not expired\n- Ensure your network allows outbound connections to Deepseek API endpoints\n- Check if you're behind a corporate firewall or VPN that might block the connection\n- Confirm that the Deepseek service is currently operational\n- Verify the model name specified is available with your subscription`,
+      provider: 'Deepseek',
+      networkDetails
     };
   }
 }
@@ -557,6 +754,43 @@ export async function testProviderConnection(
       case 'deepseek':
         result = await callDeepseek(testPrompt, credentials);
         break;
+      case 'databricks':
+        // For Databricks, we just test if we can connect to the host
+        if (!credentials.host || !credentials.token) {
+          return {
+            success: false,
+            debugInfo: "Missing required Databricks credentials: host and token are required."
+          };
+        }
+        
+        try {
+          // Attempt to connect to the Databricks API
+          const testUrl = `${credentials.host}/api/2.0/clusters/list`;
+          const response = await enhancedFetch(testUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${credentials.token}`
+            }
+          }, 'Databricks');
+          
+          if (response.ok) {
+            return { success: true };
+          } else {
+            const errorText = await response.text();
+            return {
+              success: false,
+              debugInfo: `Databricks API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+            };
+          }
+        } catch (error) {
+          const networkDetails = (error as any).networkDetails || {};
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          return {
+            success: false,
+            debugInfo: `Failed to connect to Databricks: ${errorMessage}\n\nNetwork details: ${JSON.stringify(networkDetails)}\n\nTroubleshooting tips:\n- Verify that your Databricks host URL is correct and includes the protocol (https://)\n- Ensure your personal access token is valid and has not expired\n- Check if your network allows outbound connections to Databricks\n- Verify you're not behind a firewall or VPN that might block the connection`
+          };
+        }
       default:
         return {
           success: false,
@@ -564,9 +798,16 @@ export async function testProviderConnection(
         };
     }
     
+    // Enhance debug info with network details if available
+    let enhancedDebugInfo = result.success ? undefined : (result.debugInfo || result.error);
+    
+    if (!result.success && result.networkDetails) {
+      enhancedDebugInfo = `${enhancedDebugInfo || ''}\n\nNetwork details: ${JSON.stringify(result.networkDetails, null, 2)}`;
+    }
+    
     return {
       success: result.success,
-      debugInfo: result.success ? undefined : (result.debugInfo || result.error)
+      debugInfo: enhancedDebugInfo
     };
   } catch (error) {
     console.error(`Error testing ${provider} connection:`, error);
