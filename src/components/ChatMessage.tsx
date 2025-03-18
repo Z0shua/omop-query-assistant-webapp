@@ -1,13 +1,14 @@
 
-import { Brain, User } from 'lucide-react';
+import { Brain, User, AlertCircle } from 'lucide-react';
 
 interface ChatMessageProps {
   content: string;
   isUser: boolean;
   timestamp?: string;
+  isError?: boolean;
 }
 
-export function ChatMessage({ content, isUser, timestamp }: ChatMessageProps) {
+export function ChatMessage({ content, isUser, timestamp, isError = false }: ChatMessageProps) {
   const formattedTime = timestamp 
     ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
@@ -15,14 +16,15 @@ export function ChatMessage({ content, isUser, timestamp }: ChatMessageProps) {
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-          <Brain className="h-5 w-5" />
+        <div className={`flex-shrink-0 w-8 h-8 ${isError ? 'bg-destructive/10' : 'bg-primary/10'} rounded-full flex items-center justify-center ${isError ? 'text-destructive' : 'text-primary'}`}>
+          {isError ? <AlertCircle className="h-5 w-5" /> : <Brain className="h-5 w-5" />}
         </div>
       )}
       
-      <div className={`max-w-[80%] rounded-lg px-4 py-3 ${isUser 
-        ? 'bg-primary text-primary-foreground' 
-        : 'bg-muted/70'}`}
+      <div className={`max-w-[80%] rounded-lg px-4 py-3 ${
+        isUser ? 'bg-primary text-primary-foreground' : 
+        isError ? 'bg-destructive/10 text-destructive dark:text-destructive-foreground' : 'bg-muted/70'
+      }`}
       >
         <div className="mb-1 flex items-center justify-between gap-2">
           <span className="font-medium text-sm">

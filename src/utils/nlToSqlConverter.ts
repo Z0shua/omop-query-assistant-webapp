@@ -55,6 +55,7 @@ export interface NLtoSQLResult {
   sql?: string;
   explanation?: string;
   error?: string;
+  debugInfo?: string;
   provider?: string;
 }
 
@@ -92,6 +93,7 @@ Return a valid SQL query that follows OMOP CDM conventions and best practices. T
         return {
           success: false,
           error: 'Invalid AI provider selected',
+          debugInfo: `Selected provider "${provider}" is not valid. Available providers: azure, anthropic, google, deepseek.`
         };
     }
   } catch (error) {
@@ -99,6 +101,7 @@ Return a valid SQL query that follows OMOP CDM conventions and best practices. T
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error during query conversion',
+      debugInfo: `Unhandled exception: ${JSON.stringify(error)}`
     };
   }
 }
@@ -112,44 +115,81 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
       return {
         success: false,
         error: "Missing Azure OpenAI credentials",
+        debugInfo: `Required credentials missing: ${!credentials.apiKey ? 'apiKey ' : ''}${!credentials.endpoint ? 'endpoint ' : ''}${!credentials.deploymentName ? 'deploymentName' : ''}`,
         provider: 'Azure OpenAI'
       };
     }
     
     // Make actual API call to Azure OpenAI
-    const response = await fetch(`${credentials.endpoint}/openai/deployments/${credentials.deploymentName}/chat/completions?api-version=${credentials.apiVersion}`, {
+    const requestBody = JSON.stringify({
+      messages: [
+        { role: "system", content: OMOP_SYSTEM_PROMPT },
+        { role: "user", content: query }
+      ],
+      temperature: 0.3,
+      max_tokens: 800
+    });
+    
+    const apiUrl = `${credentials.endpoint}/openai/deployments/${credentials.deploymentName}/chat/completions?api-version=${credentials.apiVersion}`;
+    console.log("Azure API URL:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'api-key': credentials.apiKey
       },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: OMOP_SYSTEM_PROMPT },
-          { role: "user", content: query }
-        ],
-        temperature: 0.3,
-        max_tokens: 800
-      })
+      body: requestBody
     });
     
+    const responseStatus = response.status;
+    const responseStatusText = response.statusText;
+    
+    // Always capture the response text, even if it's not valid JSON
+    let responseText;
+    try {
+      responseText = await response.text();
+    } catch (error) {
+      responseText = `Failed to read response text: ${error}`;
+    }
+    
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        errorData = { error: "Failed to parse error response" };
+      }
+      
       console.error("Azure OpenAI API error:", errorData);
+      
       return {
         success: false,
         error: `Azure OpenAI API error: ${response.status} ${response.statusText}`,
+        debugInfo: `Status: ${responseStatus} ${responseStatusText}\nResponse: ${responseText}\nRequest URL: ${apiUrl}`,
         provider: 'Azure OpenAI'
       };
     }
     
-    const responseData = await response.json();
-    const content = responseData.choices[0]?.message?.content;
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (error) {
+      return {
+        success: false,
+        error: "Failed to parse Azure OpenAI response",
+        debugInfo: `Status: ${responseStatus} ${responseStatusText}\nResponse: ${responseText}\nParse error: ${error}`,
+        provider: 'Azure OpenAI'
+      };
+    }
+    
+    const content = responseData.choices?.[0]?.message?.content;
     
     if (!content) {
       return {
         success: false,
         error: "No content returned from Azure OpenAI",
+        debugInfo: `Full response: ${JSON.stringify(responseData)}`,
         provider: 'Azure OpenAI'
       };
     }
@@ -168,6 +208,7 @@ async function callAzureOpenAI(query: string, credentials: AllCredentials['azure
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error calling Azure OpenAI API',
+      debugInfo: `Exception details: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`,
       provider: 'Azure OpenAI'
     };
   }
@@ -494,7 +535,7 @@ function formatExplanation(text: string): string {
 export async function testProviderConnection(
   provider: string, 
   credentials: any
-): Promise<boolean> {
+): Promise<{success: boolean, debugInfo?: string}> {
   console.log(`Testing connection to ${provider} with credentials:`, credentials);
   
   try {
@@ -517,12 +558,23 @@ export async function testProviderConnection(
         result = await callDeepseek(testPrompt, credentials);
         break;
       default:
-        return false;
+        return {
+          success: false,
+          debugInfo: `Invalid provider: ${provider}`
+        };
     }
     
-    return result.success;
+    return {
+      success: result.success,
+      debugInfo: result.success ? undefined : (result.debugInfo || result.error)
+    };
   } catch (error) {
     console.error(`Error testing ${provider} connection:`, error);
-    return false;
+    return {
+      success: false,
+      debugInfo: error instanceof Error 
+        ? `${error.name}: ${error.message}\n${error.stack}`
+        : `Unknown error: ${JSON.stringify(error)}`
+    };
   }
 }
