@@ -4,6 +4,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AIProviderSettings } from '@/components/AIProviderSettings';
 import { DatabaseSettings } from '@/components/DatabaseSettings';
+import { DatabricksSettings } from '@/components/DatabricksSettings';
 import { useCredentials } from '@/hooks/use-credentials';
 import { useToast } from '@/hooks/use-toast';
 import { testProviderConnection } from '@/utils/nlToSqlConverter';
@@ -84,7 +85,8 @@ export default function SettingsPage() {
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="ai-providers">AI Providers</TabsTrigger>
-          <TabsTrigger value="database">Database</TabsTrigger>
+          <TabsTrigger value="database">DuckDB</TabsTrigger>
+          <TabsTrigger value="databricks">Databricks</TabsTrigger>
         </TabsList>
         
         <TabsContent value="ai-providers" className="space-y-4">
@@ -108,7 +110,7 @@ export default function SettingsPage() {
                   warehouse: credentials.databricks?.warehouse || ''
                 } 
               });
-              // Using toast from useToast hook correctly
+              
               toast({
                 title: "Success",
                 description: "Database settings saved successfully"
@@ -117,6 +119,45 @@ export default function SettingsPage() {
             initialValues={{
               duckdbPath: credentials.databricks?.host || '',
               logDbPath: credentials.databricks?.catalog || ''
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="databricks" className="space-y-4">
+          <DatabricksSettings 
+            onSave={setCredentials}
+            initialValues={credentials.databricks || {
+              host: '',
+              token: '',
+              catalog: '',
+              schema: '',
+              warehouse: ''
+            }}
+            onTestConnection={async (databricksCredentials) => {
+              try {
+                setDebugInfo(null);
+                console.log('Testing Databricks connection with:', databricksCredentials);
+                
+                // Use the same test connection function but specify databricks as provider
+                const result = await testProviderConnection('databricks', databricksCredentials);
+                
+                if (result.success) {
+                  console.log('Successfully connected to Databricks');
+                  return true;
+                } else {
+                  console.error('Failed to connect to Databricks');
+                  if (result.debugInfo) {
+                    setDebugInfo(result.debugInfo);
+                  }
+                  return false;
+                }
+              } catch (error) {
+                console.error('Error testing Databricks connection:', error);
+                setDebugInfo(error instanceof Error 
+                  ? `${error.name}: ${error.message}\n${error.stack}` 
+                  : `Unknown error: ${JSON.stringify(error)}`);
+                return false;
+              }
             }}
           />
         </TabsContent>
