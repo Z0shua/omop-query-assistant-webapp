@@ -33,7 +33,7 @@ export interface DatabricksCredentials {
 }
 
 export interface AllCredentials {
-  selectedProvider: 'azure' | 'anthropic' | 'google' | 'deepseek';
+  selectedProvider: 'azure' | 'anthropic' | 'google' | 'deepseek' | 'databricks';
   azure: AzureCredentials;
   anthropic: AnthropicCredentials;
   google: GoogleAICredentials;
@@ -46,10 +46,10 @@ export function useCredentials() {
     selectedProvider: 'azure',
     azure: {
       apiKey: '',
-      endpoint: '',
-      deploymentName: '',
-      apiVersion: '2024-02-15-preview',
-      modelName: 'gpt4o'
+      endpoint: 'https://openai-omop-dev-01.openai.azure.com/',
+      deploymentName: 'gpt-4o',
+      apiVersion: '2024-12-01-preview',
+      modelName: 'gpt-4o'
     },
     anthropic: {
       apiKey: '',

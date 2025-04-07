@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,6 +7,7 @@ import { DatabricksSettings } from '@/components/DatabricksSettings';
 import { useCredentials } from '@/hooks/use-credentials';
 import { useToast } from '@/hooks/use-toast';
 import { testProviderConnection } from '@/utils/nlToSqlConverter';
+import { testAzureOpenAIConnection } from '@/utils/azureOpenAIClient';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { X, Info, AlertCircle, ExternalLink } from 'lucide-react';
@@ -27,7 +27,20 @@ export default function SettingsPage() {
       setDebugInfo(null);
       setErrorType(null);
       
-      // Call the actual connection test function
+      // Special case for Azure using our new client
+      if (provider === 'azure') {
+        const success = await testAzureOpenAIConnection(providerCredentials);
+        if (success) {
+          console.log('Successfully connected to Azure OpenAI');
+          return true;
+        } else {
+          setDebugInfo('Failed to connect to Azure OpenAI. Please check your credentials and try again.');
+          setErrorType('network');
+          return false;
+        }
+      }
+      
+      // For other providers, use the existing testProviderConnection function
       const result = await testProviderConnection(provider, providerCredentials);
       
       if (result.success) {

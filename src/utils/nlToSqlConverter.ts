@@ -98,7 +98,7 @@ Return a valid SQL query that follows OMOP CDM conventions and best practices. T
         return await callDeepseek(formattedQuery, credentials.deepseek);
       case 'databricks':
         // For Databricks, we just test if we can connect to the host
-        if (!credentials.host || !credentials.token) {
+        if (!credentials.databricks.host || !credentials.databricks.token) {
           return {
             success: false,
             debugInfo: "Missing required Databricks credentials: host and token are required."
@@ -107,11 +107,11 @@ Return a valid SQL query that follows OMOP CDM conventions and best practices. T
         
         try {
           // Attempt to connect to the Databricks API
-          const testUrl = `${credentials.host}/api/2.0/clusters/list`;
+          const testUrl = `${credentials.databricks.host}/api/2.0/clusters/list`;
           const response = await enhancedFetch(testUrl, {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${credentials.token}`
+              'Authorization': `Bearer ${credentials.databricks.token}`
             }
           }, 'Databricks');
           
