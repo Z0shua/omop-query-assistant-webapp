@@ -100,6 +100,45 @@ export async function callAzureOpenAIAPI(
 }
 
 /**
+ * Sends a chat message to Azure OpenAI focused on OMOP topics
+ * @param credentials Azure credentials
+ * @param userMessage The user's message
+ * @returns The AI response content
+ */
+export async function sendOMOPChatMessage(
+  credentials: AzureCredentials,
+  userMessage: string
+): Promise<string> {
+  try {
+    const config = createAzureOpenAIConfig(credentials);
+    
+    // System message tailored for OMOP assistance
+    const systemMessage = {
+      role: "system",
+      content: `You are an expert assistant specializing in the OMOP Common Data Model (Observational Medical Outcomes Partnership).
+Your purpose is to help users understand and work with OMOP CDM concepts, tables, relationships, and best practices. 
+You can explain OMOP data structures, help troubleshoot OMOP-related issues, and provide guidance on working with medical data in the OMOP format.
+You should focus exclusively on OMOP and related healthcare data topics. For non-OMOP related questions, politely explain that your expertise is limited to OMOP and healthcare data modeling.`
+    };
+    
+    const messages = [
+      systemMessage,
+      { role: "user", content: userMessage }
+    ];
+    
+    const response = await callAzureOpenAIAPI(config, messages, {
+      temperature: 0.7,
+      maxTokens: 1000
+    });
+    
+    return response.choices[0].message.content;
+  } catch (error) {
+    console.error('Error in OMOP chat:', error);
+    throw new Error(`Failed to get response from AI: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
  * Test the connection to Azure OpenAI
  * @param credentials The Azure credentials to test
  * @returns A promise that resolves to true if the connection is successful
