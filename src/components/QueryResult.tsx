@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,12 +14,15 @@ import {
   TableIcon,
   Maximize2,
   Minimize2,
-  Brain
+  Brain,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AIResponse } from './AIResponse';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 
 interface QueryResultProps {
+  id: string;
   sql: string;
   data: any[];
   metrics: {
@@ -30,9 +34,10 @@ interface QueryResultProps {
   };
   timestamp: string;
   aiResponse?: string;
+  onDelete?: (id: string) => void;
 }
 
-export function QueryResult({ sql, data, metrics, timestamp, aiResponse }: QueryResultProps) {
+export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onDelete }: QueryResultProps) {
   const [isSqlVisible, setIsSqlVisible] = useState(false);
   const [isAIResponseVisible, setIsAIResponseVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -93,6 +98,12 @@ export function QueryResult({ sql, data, metrics, timestamp, aiResponse }: Query
     }
   };
 
+  const handleDeleteClick = () => {
+    if (onDelete) {
+      onDelete(id);
+    }
+  };
+
   const formattedTime = new Date(timestamp).toLocaleString();
 
   return (
@@ -146,6 +157,34 @@ export function QueryResult({ sql, data, metrics, timestamp, aiResponse }: Query
                 <ChevronDown className="h-4 w-4 ml-1" />
               )}
             </Button>
+            
+            {onDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Query</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this query? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteClick} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             
             <Button
               variant="ghost"

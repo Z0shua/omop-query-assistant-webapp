@@ -127,7 +127,7 @@ You should focus exclusively on OMOP and related healthcare data topics. For non
     ];
     
     const response = await callAzureOpenAIAPI(config, messages, {
-      temperature: 0.7,
+      temperature: 0.3, // Lower temperature to reduce chances of hallucination
       maxTokens: 1000
     });
     
@@ -154,7 +154,10 @@ export async function testAzureOpenAIConnection(credentials: AzureCredentials): 
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: 'Hello, are you working?' }
       ],
-      { maxTokens: 10 }
+      { 
+        maxTokens: 10,
+        temperature: 0.1 // Low temperature for more deterministic responses
+      }
     );
     
     return true;

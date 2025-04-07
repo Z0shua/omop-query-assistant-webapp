@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -10,8 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useCredentials } from '@/hooks/use-credentials';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Brain, AlertTriangle, Database, Loader } from 'lucide-react';
+import { Brain, AlertTriangle, Database, Loader, Trash2 } from 'lucide-react';
 import { convertNaturalLanguageToSQL } from '@/utils/nlToSqlConverter';
+import { Button } from '@/components/ui/button';
 
 export default function QueryPage() {
   const location = useLocation();
@@ -27,6 +29,26 @@ export default function QueryPage() {
       setQuery(location.state.initialQuery);
     }
   }, [location.state]);
+
+  // Load query history from localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('queryHistory');
+    if (savedHistory) {
+      try {
+        setQueryHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Error parsing saved query history:', e);
+        // If there's an error parsing, start with an empty history
+      }
+    }
+  }, []);
+
+  // Save query history to localStorage whenever it changes
+  useEffect(() => {
+    if (queryHistory.length > 0) {
+      localStorage.setItem('queryHistory', JSON.stringify(queryHistory));
+    }
+  }, [queryHistory]);
 
   const checkCredentials = () => {
     const provider = credentials.selectedProvider;
@@ -124,7 +146,7 @@ export default function QueryPage() {
       // Use the generated SQL to query the database
       // For demonstration, we'll use mock data
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate database query time
-      const mockData = generateMockData(queryText);
+      const mockData = generateMockData(nlToSqlResult.sql || '');
       
       const mockMetrics = {
         rows: mockData.length,
@@ -162,21 +184,34 @@ export default function QueryPage() {
     }
   };
 
+  const handleDeleteQuery = (id: string) => {
+    setQueryHistory(prev => prev.filter(item => item.id !== id));
+    toast({
+      title: "Query deleted",
+      description: "The query has been removed from your history",
+    });
+  };
+
   const handleExampleSelect = (example: string) => {
     setQuery(example);
     handleQuerySubmit(example);
   };
 
-  const generateMockData = (query: string): any[] => {
-    const lowercaseQuery = query.toLowerCase();
+  // Generate mock data based on the actual SQL query
+  const generateMockData = (sqlQuery: string): any[] => {
+    // This function will analyze the SQL query and generate appropriate mock data
+    // This avoids hallucinations by using the actual SQL to determine what shape the data should have
     
-    if (lowercaseQuery.includes('gender')) {
+    const sql = sqlQuery.toLowerCase();
+    
+    // Basic structure for result sets based on common tables in OMOP CDM
+    if (sql.includes('person') && sql.includes('gender')) {
       return [
         { gender_concept_id: 8507, gender: 'Male', count: 357 },
         { gender_concept_id: 8532, gender: 'Female', count: 392 },
         { gender_concept_id: 8521, gender: 'Other', count: 12 },
       ];
-    } else if (lowercaseQuery.includes('age')) {
+    } else if (sql.includes('age') || (sql.includes('person') && sql.includes('year_of_birth'))) {
       return [
         { age_group: '0-17', count: 120 },
         { age_group: '18-34', count: 210 },
@@ -184,7 +219,7 @@ export default function QueryPage() {
         { age_group: '50-64', count: 156 },
         { age_group: '65+', count: 90 },
       ];
-    } else if (lowercaseQuery.includes('diagnoses') || lowercaseQuery.includes('conditions')) {
+    } else if (sql.includes('condition_occurrence') || sql.includes('diagnoses') || sql.includes('conditions')) {
       return [
         { diagnosis: 'Essential hypertension', count: 125 },
         { diagnosis: 'Hyperlipidemia', count: 98 },
@@ -197,11 +232,11 @@ export default function QueryPage() {
         { diagnosis: 'Gastroesophageal reflux disease', count: 49 },
         { diagnosis: 'Osteoarthritis', count: 43 },
       ];
-    } else if (lowercaseQuery.includes('diabetes')) {
+    } else if (sql.includes('diabetes')) {
       return [
-        { patient_count: 87 }
+        { patient_count: 87, average_age: 62.5, male_count: 41, female_count: 46 }
       ];
-    } else if (lowercaseQuery.includes('medications') || lowercaseQuery.includes('drugs')) {
+    } else if (sql.includes('drug_exposure') || sql.includes('medications') || sql.includes('drugs')) {
       return [
         { medication_name: 'Lisinopril', patient_count: 78 },
         { medication_name: 'Atorvastatin', patient_count: 65 },
@@ -214,15 +249,90 @@ export default function QueryPage() {
         { medication_name: 'Hydrochlorothiazide', patient_count: 35 },
         { medication_name: 'Ibuprofen', patient_count: 32 },
       ];
+    } else if (sql.includes('procedure_occurrence') || sql.includes('procedures')) {
+      return [
+        { procedure_name: 'Routine physical examination', count: 145 },
+        { procedure_name: 'Blood test', count: 132 },
+        { procedure_name: 'Vaccination', count: 98 },
+        { procedure_name: 'Cardiac evaluation', count: 76 },
+        { procedure_name: 'X-ray imaging', count: 67 }
+      ];
+    } else if (sql.includes('measurement') || sql.includes('lab')) {
+      return [
+        { measurement_name: 'Blood pressure reading', count: 210 },
+        { measurement_name: 'HbA1c test', count: 145 },
+        { measurement_name: 'Cholesterol test', count: 132 },
+        { measurement_name: 'Renal function test', count: 98 },
+        { measurement_name: 'Liver function test', count: 87 }
+      ];
+    } else if (sql.includes('visit_occurrence') || sql.includes('visits')) {
+      return [
+        { visit_type: 'Outpatient', count: 450 },
+        { visit_type: 'Emergency', count: 120 },
+        { visit_type: 'Inpatient', count: 75 },
+        { visit_type: 'Pharmacy', count: 210 },
+        { visit_type: 'Telehealth', count: 95 }
+      ];
     } else {
-      // Generic sample data for other queries
-      return Array.from({ length: 10 }, (_, i) => ({
-        person_id: 1000 + i,
-        year_of_birth: Math.floor(Math.random() * 50) + 1950,
-        gender: Math.random() > 0.5 ? 'Male' : 'Female',
-        condition_count: Math.floor(Math.random() * 15) + 1
+      // Generic sample data for other queries - based on columns in the SQL
+      const columnMatch = sql.match(/select\s+(.+?)\s+from/i);
+      if (columnMatch) {
+        const columns = columnMatch[1].split(',').map(col => col.trim().split(' as ').pop()?.trim() || col.trim());
+        
+        // Remove * wildcard and handle "count(*)" type expressions
+        const cleanColumns = columns
+          .filter(col => col !== '*')
+          .map(col => {
+            // Extract alias from functions like count(*) as total_count
+            if (col.includes('(') && col.includes(')')) {
+              const aliasMatch = col.match(/as\s+(\w+)/i);
+              return aliasMatch ? aliasMatch[1] : 'value';
+            }
+            return col;
+          });
+        
+        return Array.from({ length: 5 }, (_, i) => {
+          const row: Record<string, any> = {};
+          cleanColumns.forEach(col => {
+            // Generate appropriate mock values based on column name
+            if (col.includes('id') || col.includes('_id')) {
+              row[col] = 1000 + i;
+            } else if (col.includes('date') || col.includes('time')) {
+              const date = new Date();
+              date.setDate(date.getDate() - i * 30);
+              row[col] = date.toISOString().split('T')[0];
+            } else if (col.includes('count') || col.includes('number')) {
+              row[col] = Math.floor(Math.random() * 100) + 1;
+            } else if (col.includes('name')) {
+              row[col] = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'][i];
+            } else if (col.includes('gender')) {
+              row[col] = ['Male', 'Female', 'Other', 'Male', 'Female'][i];
+            } else if (col.includes('concept')) {
+              row[col] = 8000 + i * 100;
+            } else {
+              row[col] = `Value ${i+1}`;
+            }
+          });
+          return row;
+        });
+      }
+      
+      // If nothing matches, return a generic data structure
+      return Array.from({ length: 5 }, (_, i) => ({
+        id: 1000 + i,
+        value: `Result ${i+1}`,
+        count: Math.floor(Math.random() * 100) + 1
       }));
     }
+  };
+
+  const clearAllQueries = () => {
+    setQueryHistory([]);
+    localStorage.removeItem('queryHistory');
+    toast({
+      title: "History cleared",
+      description: "All queries have been removed from your history",
+    });
   };
 
   return (
@@ -267,18 +377,34 @@ export default function QueryPage() {
           </Card>
 
           {queryHistory.length > 0 && (
-            <ScrollArea className="h-full max-h-[800px]">
-              {queryHistory.map((item) => (
-                <QueryResult
-                  key={item.id}
-                  sql={item.sql}
-                  data={item.data}
-                  metrics={item.metrics}
-                  timestamp={item.timestamp}
-                  aiResponse={item.aiResponse}
-                />
-              ))}
-            </ScrollArea>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg font-medium">Query Results</h2>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={clearAllQueries}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              </div>
+              <ScrollArea className="h-full max-h-[800px]">
+                {queryHistory.map((item) => (
+                  <QueryResult
+                    key={item.id}
+                    id={item.id}
+                    sql={item.sql}
+                    data={item.data}
+                    metrics={item.metrics}
+                    timestamp={item.timestamp}
+                    aiResponse={item.aiResponse}
+                    onDelete={handleDeleteQuery}
+                  />
+                ))}
+              </ScrollArea>
+            </div>
           )}
         </div>
 
