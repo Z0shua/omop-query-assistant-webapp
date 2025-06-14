@@ -4,7 +4,7 @@ A modern web application that allows users to query OMOP (Observational Medical 
 
 ## 🌐 Live Demo
 
-Visit the live application: [OMOP Query Assistant](https://[your-username].github.io/omop-query-assistant-webapp)
+Visit the live application: [OMOP Query Assistant](https://z0shua.github.io/omop-query-assistant-webapp)
 
 ## Features
 
@@ -89,7 +89,7 @@ This application is configured for automatic deployment to GitHub Pages using Gi
    - Install dependencies
    - Build the application
    - Deploy to GitHub Pages
-3. **Access**: Your app will be available at `https://[your-username].github.io/omop-query-assistant-webapp`
+3. **Access**: Your app will be available at `https://z0shua.github.io/omop-query-assistant-webapp`
 
 ### Manual Deployment
 
@@ -103,7 +103,7 @@ npm install --save-dev gh-pages
 2. Update the homepage in `package.json` with your GitHub username:
 ```json
 {
-  "homepage": "https://[your-username].github.io/omop-query-assistant-webapp"
+  "homepage": "https://z0shua.github.io/omop-query-assistant-webapp"
 }
 ```
 

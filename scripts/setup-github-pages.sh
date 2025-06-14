@@ -7,13 +7,16 @@ echo "🚀 Setting up GitHub Pages deployment for OMOP Query Assistant"
 REPO_NAME=$(basename -s .git `git config --get remote.origin.url`)
 echo "📦 Repository name: $REPO_NAME"
 
-# Get GitHub username from remote URL
+# Get GitHub username from remote URL, default to Z0shua if not found
 GITHUB_USERNAME=$(git config --get remote.origin.url | sed -n 's/.*github\.com[:/]\([^/]*\).*/\1/p')
+if [ -z "$GITHUB_USERNAME" ]; then
+    GITHUB_USERNAME="z0shua"
+fi
 echo "👤 GitHub username: $GITHUB_USERNAME"
 
 # Update package.json with correct homepage
 echo "📝 Updating package.json homepage..."
-sed -i "s|https://\[your-username\].github.io/omop-query-assistant-webapp|https://$GITHUB_USERNAME.github.io/$REPO_NAME|g" package.json
+sed -i "s|https://z0shua\.github\.io/omop-query-assistant-webapp|https://$GITHUB_USERNAME.github.io/$REPO_NAME|g" package.json
 
 echo "✅ Setup complete!"
 echo ""
