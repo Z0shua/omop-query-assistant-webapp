@@ -1,112 +1,204 @@
 # OMOP Query Assistant
 
-## Overview
+A web application that enables natural language querying of OMOP (Observational Medical Outcomes Partnership) Common Data Model databases. Translate plain English questions into SQL queries and visualize medical data analysis results.
 
-OMOP Query Assistant is a web application that enables users to query OMOP (Observational Medical Outcomes Partnership) Common Data Model databases using natural language. The app translates plain English questions into SQL queries and displays results, making medical data analysis more accessible for researchers and clinicians.
+## 🚀 Features
 
-## Architecture
+- **Natural Language to SQL**: Convert medical questions to OMOP-compliant SQL queries
+- **Multi-AI Support**: OpenAI, Anthropic, Google AI, and Deepseek integration
+- **Database Compatibility**: PostgreSQL, SQLite, and mock database support
+- **Interactive Results**: Tables, charts, and data visualizations
+- **Query Management**: History tracking and example queries
+- **Secure Credentials**: Browser-based credential storage
+- **Modern UI**: Built with React, TypeScript, and Tailwind CSS
 
-The application consists of two main components:
+## 🏗️ Architecture
 
-- **Frontend**: React-based web interface for user interaction
-- **Backend**: Node.js/Express API for NLP-to-SQL conversion and database query execution
+- **Frontend**: React 18 + TypeScript + Vite
+- **Backend**: Node.js + Express API
+- **Database**: PostgreSQL, SQLite, or mock data
+- **AI Providers**: OpenAI, Anthropic, Google AI, Deepseek
 
-## Features
-
-- Natural language to SQL translation for OMOP CDM databases
-- Support for multiple AI providers (Azure OpenAI, Anthropic, Google AI, Deepseek)
-- Compatible with PostgreSQL, SQLite, and mock databases
-- Interactive results with tables and charts
-- Query history and example queries
-- Secure credential management (stored in browser local storage)
-- Modern UI built with React, TypeScript, and Tailwind CSS
-- RESTful API backend with comprehensive error handling
-
-## Technology Stack
+## 🛠️ Technology Stack
 
 ### Frontend
-- **Framework:** React 18, TypeScript, Vite
-- **UI:** Radix UI, Tailwind CSS, shadcn/ui
-- **State Management:** React Query (TanStack Query)
-- **Routing:** React Router DOM
-- **Charts:** Recharts
-- **Forms:** React Hook Form, Zod
+- React 18, TypeScript, Vite
+- Radix UI, Tailwind CSS, shadcn/ui
+- React Query (TanStack Query)
+- React Router DOM
+- Recharts for data visualization
+- React Hook Form + Zod validation
 
 ### Backend
-- **Framework:** Node.js, Express
-- **AI Integration:** OpenAI, Anthropic, Google AI SDKs
-- **Database:** PostgreSQL, SQLite drivers
-- **Validation:** Joi
-- **Security:** Helmet, CORS, Rate limiting
+- Node.js, Express
+- AI SDKs (OpenAI, Anthropic, Google AI)
+- Database drivers (PostgreSQL, SQLite)
+- Joi validation
+- Security middleware (Helmet, CORS, Rate limiting)
 
-## Getting Started
+## 📦 Installation
 
 ### Prerequisites
 - Node.js 18+ or Bun
 - npm, yarn, or bun package manager
-- Access to an AI provider API (OpenAI, Anthropic, Google AI)
+- AI provider API key (OpenAI, Anthropic, or Google AI)
 
-### Installation
+### Quick Start
 
-1. Clone the repository:
+1. **Clone the repository**
    ```bash
    git clone https://github.com/Z0shua/omop-query-assistant-webapp.git
    cd omop-query-assistant-webapp
    ```
 
-2. Install frontend dependencies:
+2. **Install dependencies**
    ```bash
+   # Frontend dependencies
    npm install
+   
+   # Backend dependencies
+   cd backend && npm install && cd ..
    ```
 
-3. Install backend dependencies:
+3. **Configure environment**
    ```bash
    cd backend
-   npm install
-   cd ..
-   ```
-
-4. Configure backend environment:
-   ```bash
-   cd backend
-   cp env.example .env
+   cp .env.example .env
    # Edit .env with your API keys and configuration
    cd ..
    ```
 
-5. Start the backend server:
+4. **Start the application**
    ```bash
-   cd backend
+   # Terminal 1: Start backend
+   cd backend && npm run dev
+   
+   # Terminal 2: Start frontend
    npm run dev
    ```
 
-6. Start the frontend development server (in a new terminal):
-   ```bash
-   npm run dev
-   ```
+5. **Open your browser**
+   Navigate to `http://localhost:8080`
 
-7. Open your browser and navigate to `http://localhost:5173`
+## ⚙️ Configuration
 
-### Configuration
+### Backend Environment Variables
+Create a `.env` file in the `backend` directory:
 
-#### Backend Configuration
-Create a `.env` file in the `backend` directory with:
-- AI provider API keys (OpenAI, Anthropic, Google AI)
-- Database connection details (optional)
-- Server configuration
+```env
+# AI Provider Configuration
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
+GOOGLE_AI_API_KEY=your_google_key
 
-#### Frontend Configuration
-The frontend automatically connects to the backend at `http://localhost:3001`. To change this, set the `VITE_API_URL` environment variable.
+# Database Configuration (optional)
+DATABASE_URL=postgresql://user:password@localhost:5432/omop
+SQLITE_PATH=./data/omop.db
 
-## Usage
-- Click "Start SQL Querying" on the home page
-- Enter your medical data question in natural language
-- View the generated SQL, results, and visualizations
-- Access your query history and example queries for inspiration
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+```
 
-> **Note:** All OMOP query execution and mock data fallback is handled through the backend and the `omopApiService.ts` service. The frontend does not generate mock data directly. Databricks is currently only supported for connection testing and credential management, not for query execution. All queries are executed against supported databases (PostgreSQL, SQLite, or mock) via the backend API.
+### Frontend Configuration
+The frontend connects to `http://localhost:3001` by default. To change this:
+```bash
+export VITE_API_URL=http://your-backend-url:port
+```
 
-## API Endpoints
+## 📖 Usage
+
+1. **Start Querying**: Click "Start SQL Querying" on the home page
+2. **Ask Questions**: Enter medical data questions in natural language
+3. **View Results**: See generated SQL, results tables, and visualizations
+4. **Explore History**: Access previous queries and examples
+
+### Example Queries
+- "How many patients have diabetes?"
+- "What's the average age of patients with heart disease?"
+- "Show me the top 10 medications prescribed for hypertension"
+
+## 🔌 API Endpoints
 
 ### Query Endpoints
-- `
+- `POST /api/query/nlp-to-sql` - Convert natural language to SQL
+- `POST /api/query/execute` - Execute SQL query against database
+- `GET /api/query/history` - Get query history
+- `POST /api/query/validate` - Validate SQL query syntax
+
+### Health & Status
+- `GET /api/health` - Health check
+- `GET /api/status` - System status
+- `GET /api/providers` - Available AI providers
+
+### Database
+- `POST /api/db/connect` - Test database connection
+- `GET /api/db/schema` - Get database schema
+- `GET /api/db/tables` - List available tables
+
+## 🚀 Deployment
+
+### GitHub Pages (Frontend Only)
+The frontend is automatically deployed to GitHub Pages on push to `main` branch.
+
+### Full Stack Deployment
+1. Deploy backend to your preferred hosting service
+2. Set environment variables
+3. Build and deploy frontend with correct API URL
+4. Configure CORS settings
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
+
+## 📚 Documentation
+
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [Component Documentation](docs/COMPONENTS.md)
+- [API Reference](docs/API.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Future Roadmap](WIKI.md)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+The MIT License is a permissive license that allows others to:
+- Use the code commercially
+- Modify the code
+- Distribute the code
+- Use it privately
+- Sublicense it
+
+The only requirement is that the license and copyright notice be included in all copies.
+
+## ⚠️ Disclaimer
+
+This application is for educational and research purposes. Always ensure compliance with:
+- HIPAA regulations when handling patient data
+- Institutional review board requirements
+- Data privacy laws in your jurisdiction
+- OMOP CDM version compatibility
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](https://github.com/Z0shua/omop-query-assistant-webapp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Z0shua/omop-query-assistant-webapp/discussions)
+- **Documentation**: Check the [docs](docs/) folder
+
+## 🙏 Acknowledgments
+
+- OMOP Common Data Model community
+- OpenAI, Anthropic, and Google AI for NLP capabilities
+- React and TypeScript communities
+- All contributors and users
+
+---
+
+**Note**: All OMOP query execution and mock data fallback is handled through the backend API. The frontend does not generate mock data directly. Databricks is currently only supported for connection testing and credential management, not for query execution.
