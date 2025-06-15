@@ -1,0 +1,40 @@
+{
+  "name": "omop-query-assistant-backend",
+  "version": "1.0.0",
+  "description": "Backend API for OMOP Query Assistant",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "pg": "^8.11.3",
+    "sqlite3": "^5.1.6",
+    "openai": "^4.20.1",
+    "@anthropic-ai/sdk": "^0.9.1",
+    "@google/generative-ai": "^0.2.1",
+    "axios": "^1.6.2",
+    "joi": "^17.11.0",
+    "express-rate-limit": "^7.1.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0"
+  },
+  "keywords": [
+    "omop",
+    "medical",
+    "nlp",
+    "sql",
+    "api"
+  ],
+  "author": "Z0shua",
+  "license": "MIT"
+} 
