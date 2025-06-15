@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -14,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Brain, AlertTriangle, Database, Loader, Trash2 } from 'lucide-react';
 import { convertNaturalLanguageToSQL } from '@/utils/nlToSqlConverter';
 import { Button } from '@/components/ui/button';
+import { executeOMOPQuery } from '@/services/omopApiService';
 
 export default function QueryPage() {
   const location = useLocation();
@@ -123,55 +123,41 @@ export default function QueryPage() {
 
   const handleQuerySubmit = async (queryText: string) => {
     if (!checkCredentials()) return;
-    
     setProcessingQuery(true);
-    
     try {
-      // Check which database to use
-      const usingDatabricks = credentials.databricks.host && credentials.databricks.token;
-      
-      // Convert natural language to SQL using the AI provider
-      const nlToSqlResult = await convertNaturalLanguageToSQL(queryText, credentials);
-      
-      if (!nlToSqlResult.success) {
+      // Convert natural language to SQL using the AI provider (handled by backend)
+      const response = await executeOMOPQuery({ naturalLanguage: queryText });
+      if (!response.success) {
         toast({
-          title: "Error generating SQL",
-          description: nlToSqlResult.error || "Failed to convert natural language to SQL",
+          title: "Error processing query",
+          description: response.error || "Failed to process query",
           variant: "destructive"
         });
         setProcessingQuery(false);
         return;
       }
-      
-      // Use the generated SQL to query the database
-      // For demonstration, we'll use mock data
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate database query time
-      const mockData = generateMockData(nlToSqlResult.sql || '');
-      
-      const mockMetrics = {
-        rows: mockData.length,
-        columns: mockData.length > 0 ? Object.keys(mockData[0]) : [],
-        execution_time_ms: Math.random() * 1000 + 200,
-        database_type: usingDatabricks ? 'Databricks' : 'DuckDB',
-        ai_provider: nlToSqlResult.provider || getProviderName(),
-        cached: false
+      // Use the returned data and metadata
+      const metrics = {
+        rows: response.data?.length || 0,
+        columns: response.data && response.data.length > 0 ? Object.keys(response.data[0]) : [],
+        execution_time_ms: response.execution_time_ms || 0,
+        database_type: credentials.databricks.host && credentials.databricks.token ? 'Databricks' : 'DuckDB',
+        ai_provider: credentials.selectedProvider,
+        cached: response.metadata?.cached || false
       };
-      
-      // Add to history
       const queryResult = {
         id: Date.now().toString(),
         query: queryText,
-        sql: nlToSqlResult.sql || "",
-        data: mockData,
-        metrics: mockMetrics,
+        sql: response.sql || "",
+        data: response.data || [],
+        metrics,
         timestamp: new Date().toISOString(),
-        aiResponse: nlToSqlResult.explanation || ""
+        aiResponse: response.explanation || ""
       };
-      
       setQueryHistory(prev => [queryResult, ...prev]);
       toast({
         title: "Query processed successfully",
-        description: `Found ${mockData.length} results using ${credentials.selectedProvider.toUpperCase()}.`,
+        description: `Found ${metrics.rows} results using ${credentials.selectedProvider.toUpperCase()}.`,
       });
     } catch (error) {
       toast({
@@ -195,135 +181,6 @@ export default function QueryPage() {
   const handleExampleSelect = (example: string) => {
     setQuery(example);
     handleQuerySubmit(example);
-  };
-
-  // Generate mock data based on the actual SQL query
-  const generateMockData = (sqlQuery: string): any[] => {
-    // This function will analyze the SQL query and generate appropriate mock data
-    // This avoids hallucinations by using the actual SQL to determine what shape the data should have
-    
-    const sql = sqlQuery.toLowerCase();
-    
-    // Basic structure for result sets based on common tables in OMOP CDM
-    if (sql.includes('person') && sql.includes('gender')) {
-      return [
-        { gender_concept_id: 8507, gender: 'Male', count: 357 },
-        { gender_concept_id: 8532, gender: 'Female', count: 392 },
-        { gender_concept_id: 8521, gender: 'Other', count: 12 },
-      ];
-    } else if (sql.includes('age') || (sql.includes('person') && sql.includes('year_of_birth'))) {
-      return [
-        { age_group: '0-17', count: 120 },
-        { age_group: '18-34', count: 210 },
-        { age_group: '35-49', count: 185 },
-        { age_group: '50-64', count: 156 },
-        { age_group: '65+', count: 90 },
-      ];
-    } else if (sql.includes('condition_occurrence') || sql.includes('diagnoses') || sql.includes('conditions')) {
-      return [
-        { diagnosis: 'Essential hypertension', count: 125 },
-        { diagnosis: 'Hyperlipidemia', count: 98 },
-        { diagnosis: 'Type 2 diabetes mellitus', count: 87 },
-        { diagnosis: 'Acute bronchitis', count: 76 },
-        { diagnosis: 'Low back pain', count: 72 },
-        { diagnosis: 'Anxiety disorder', count: 68 },
-        { diagnosis: 'Major depressive disorder', count: 56 },
-        { diagnosis: 'Acute upper respiratory infection', count: 52 },
-        { diagnosis: 'Gastroesophageal reflux disease', count: 49 },
-        { diagnosis: 'Osteoarthritis', count: 43 },
-      ];
-    } else if (sql.includes('diabetes')) {
-      return [
-        { patient_count: 87, average_age: 62.5, male_count: 41, female_count: 46 }
-      ];
-    } else if (sql.includes('drug_exposure') || sql.includes('medications') || sql.includes('drugs')) {
-      return [
-        { medication_name: 'Lisinopril', patient_count: 78 },
-        { medication_name: 'Atorvastatin', patient_count: 65 },
-        { medication_name: 'Metformin', patient_count: 59 },
-        { medication_name: 'Amlodipine', patient_count: 52 },
-        { medication_name: 'Omeprazole', patient_count: 48 },
-        { medication_name: 'Levothyroxine', patient_count: 45 },
-        { medication_name: 'Simvastatin', patient_count: 41 },
-        { medication_name: 'Metoprolol', patient_count: 39 },
-        { medication_name: 'Hydrochlorothiazide', patient_count: 35 },
-        { medication_name: 'Ibuprofen', patient_count: 32 },
-      ];
-    } else if (sql.includes('procedure_occurrence') || sql.includes('procedures')) {
-      return [
-        { procedure_name: 'Routine physical examination', count: 145 },
-        { procedure_name: 'Blood test', count: 132 },
-        { procedure_name: 'Vaccination', count: 98 },
-        { procedure_name: 'Cardiac evaluation', count: 76 },
-        { procedure_name: 'X-ray imaging', count: 67 }
-      ];
-    } else if (sql.includes('measurement') || sql.includes('lab')) {
-      return [
-        { measurement_name: 'Blood pressure reading', count: 210 },
-        { measurement_name: 'HbA1c test', count: 145 },
-        { measurement_name: 'Cholesterol test', count: 132 },
-        { measurement_name: 'Renal function test', count: 98 },
-        { measurement_name: 'Liver function test', count: 87 }
-      ];
-    } else if (sql.includes('visit_occurrence') || sql.includes('visits')) {
-      return [
-        { visit_type: 'Outpatient', count: 450 },
-        { visit_type: 'Emergency', count: 120 },
-        { visit_type: 'Inpatient', count: 75 },
-        { visit_type: 'Pharmacy', count: 210 },
-        { visit_type: 'Telehealth', count: 95 }
-      ];
-    } else {
-      // Generic sample data for other queries - based on columns in the SQL
-      const columnMatch = sql.match(/select\s+(.+?)\s+from/i);
-      if (columnMatch) {
-        const columns = columnMatch[1].split(',').map(col => col.trim().split(' as ').pop()?.trim() || col.trim());
-        
-        // Remove * wildcard and handle "count(*)" type expressions
-        const cleanColumns = columns
-          .filter(col => col !== '*')
-          .map(col => {
-            // Extract alias from functions like count(*) as total_count
-            if (col.includes('(') && col.includes(')')) {
-              const aliasMatch = col.match(/as\s+(\w+)/i);
-              return aliasMatch ? aliasMatch[1] : 'value';
-            }
-            return col;
-          });
-        
-        return Array.from({ length: 5 }, (_, i) => {
-          const row: Record<string, any> = {};
-          cleanColumns.forEach(col => {
-            // Generate appropriate mock values based on column name
-            if (col.includes('id') || col.includes('_id')) {
-              row[col] = 1000 + i;
-            } else if (col.includes('date') || col.includes('time')) {
-              const date = new Date();
-              date.setDate(date.getDate() - i * 30);
-              row[col] = date.toISOString().split('T')[0];
-            } else if (col.includes('count') || col.includes('number')) {
-              row[col] = Math.floor(Math.random() * 100) + 1;
-            } else if (col.includes('name')) {
-              row[col] = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'][i];
-            } else if (col.includes('gender')) {
-              row[col] = ['Male', 'Female', 'Other', 'Male', 'Female'][i];
-            } else if (col.includes('concept')) {
-              row[col] = 8000 + i * 100;
-            } else {
-              row[col] = `Value ${i+1}`;
-            }
-          });
-          return row;
-        });
-      }
-      
-      // If nothing matches, return a generic data structure
-      return Array.from({ length: 5 }, (_, i) => ({
-        id: 1000 + i,
-        value: `Result ${i+1}`,
-        count: Math.floor(Math.random() * 100) + 1
-      }));
-    }
   };
 
   const clearAllQueries = () => {

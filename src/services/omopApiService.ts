@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
+ * This service is the single source of truth for OMOP query execution and mock data fallback in the frontend.
+ * All queries should go through this service, and not use mock data directly in pages/components.
  * Service for accessing OMOP CDM data via a proxy
  * This handles CORS issues by using Supabase Edge Functions as a proxy
  */

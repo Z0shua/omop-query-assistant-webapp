@@ -104,52 +104,9 @@ The frontend automatically connects to the backend at `http://localhost:3001`. T
 - View the generated SQL, results, and visualizations
 - Access your query history and example queries for inspiration
 
+> **Note:** All OMOP query execution and mock data fallback is handled through the backend and the `omopApiService.ts` service. The frontend does not generate mock data directly. Databricks is currently only supported for connection testing and credential management, not for query execution. All queries are executed against supported databases (PostgreSQL, SQLite, or mock) via the backend API.
+
 ## API Endpoints
 
 ### Query Endpoints
-- `POST /api/query/nl-to-sql` - Convert natural language to SQL
-- `POST /api/query/execute` - Execute SQL query
-- `POST /api/query/process` - Complete workflow (NL → SQL → Execute)
-- `GET /api/query/providers` - Get supported AI providers
-
-### Health Endpoints
-- `GET /api/health` - Basic health check
-- `GET /api/health/detailed` - Detailed health check with service status
-
-## Project Structure
-
-```
-├── src/                    # Frontend source code
-│   ├── components/         # UI and feature components
-│   ├── pages/             # Application pages
-│   ├── services/          # API and external services
-│   └── ...
-├── backend/               # Backend API
-│   ├── src/
-│   │   ├── routes/        # API routes
-│   │   ├── services/      # Business logic
-│   │   ├── middleware/    # Express middleware
-│   │   └── utils/         # Utility functions
-│   └── ...
-└── ...
-```
-
-## Deployment
-
-This app is configured for automatic deployment to GitHub Pages using GitHub Actions. See the Deployment section in this repository for details.
-
-## Contributing
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -m 'Add feature'`)
-4. Push to your branch (`git push origin feature/your-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-
-## Support
-- For questions, use the Help page in the app
-- Review example queries for guidance
-- Explore the database information page for schema details
+- `

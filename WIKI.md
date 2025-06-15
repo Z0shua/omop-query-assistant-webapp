@@ -4,6 +4,11 @@
 
 The OMOP Query Assistant aims to become a comprehensive tool for translating natural language questions into accurate, efficient OMOP CDM SQL queries, empowering researchers and clinicians to analyze medical data without deep technical expertise.
 
+## Current Architecture
+
+- **All OMOP query execution and mock data fallback is handled through the backend and the `omopApiService.ts` service.** The frontend does not generate mock data directly; all queries (including mock data for development/testing) are routed through the backend or a proxy service.
+- **Databricks is currently only supported for connection testing and credential management, not for query execution.** Queries are executed against supported databases (PostgreSQL, SQLite, or mock) via the backend API. Support for Databricks or other backends may be added in the future.
+
 ## Potential Features
 
 - **Advanced NLP-to-SQL Translation**
@@ -51,6 +56,7 @@ The OMOP Query Assistant aims to become a comprehensive tool for translating nat
 - **EHR and Data Warehouse Integration**
   - Direct connection to hospital or research OMOP databases
   - Secure, federated query execution
+  - *Potential future support for Databricks and other cloud data warehouses*
 
 - **API and Plugin Ecosystem**
   - REST API for programmatic access to NLP-to-SQL translation
@@ -70,7 +76,7 @@ The OMOP Query Assistant aims to become a comprehensive tool for translating nat
 2. **Medium Term**
    - Integrate OMOP vocabulary and concept mapping
    - Add visual query builder and advanced result visualization
-   - Support for more AI providers and database backends
+   - Support for more AI providers and database backends (potentially including Databricks)
 
 3. **Long Term**
    - Enable collaborative features and sharing
