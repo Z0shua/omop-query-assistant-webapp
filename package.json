@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A modern web application for querying OMOP Common Data Model databases using natural language",
   "homepage": "https://z0shua.github.io/omop-query-assistant-webapp",
-  "author": "Z0shua",
+  "author": "Zhangshu Joshua Jiang",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
