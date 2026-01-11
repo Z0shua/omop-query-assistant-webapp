@@ -4,21 +4,21 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Layout } from '@/components/layout/Layout';
-import { ExampleQueries } from '@/components/ExampleQueries';
-import { QueryInput } from '@/components/QueryInput';
-import { ChatMessage } from '@/components/ChatMessage';
+import { ExampleQueries } from '@/components/features/ExampleQueries';
+import { QueryInput } from '@/components/features/QueryInput';
+import { ChatMessage } from '@/components/features/ChatMessage';
 import { Brain, Search, Database, Settings, History, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCredentials } from '@/hooks/use-credentials';
-import { OMOPChat } from '@/components/OMOPChat';
+import { OMOPChat } from '@/components/features/OMOPChat';
 
 export default function Index() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { credentials } = useCredentials();
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   // Handle example query selection
   const handleSelectExample = (query: string) => {
     // Navigate to query page with the selected example
@@ -37,8 +37,8 @@ export default function Index() {
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
           Ask questions about your OMOP data in plain English and get instant results
         </p>
-        <Button 
-          size="lg" 
+        <Button
+          size="lg"
           onClick={() => navigate('/query')}
           className="animate-glow shadow-lg"
         >
@@ -71,8 +71,8 @@ export default function Index() {
               <p className="text-muted-foreground mb-4">
                 Translate complex medical data questions into accurate SQL queries automatically
               </p>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group"
                 onClick={() => navigate('/query')}
               >
@@ -96,8 +96,8 @@ export default function Index() {
               <p className="text-muted-foreground mb-4">
                 Understands OMOP tables, relationships, and vocabulary concepts
               </p>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group"
                 onClick={() => navigate('/database')}
               >
@@ -121,8 +121,8 @@ export default function Index() {
               <p className="text-muted-foreground mb-4">
                 All your queries are saved locally for easy reference and reuse
               </p>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group"
                 onClick={() => navigate('/history')}
               >
@@ -146,8 +146,8 @@ export default function Index() {
               <p className="text-muted-foreground mb-4">
                 Your credentials are stored securely in your browser's local storage
               </p>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="group"
                 onClick={() => navigate('/settings')}
               >
@@ -164,7 +164,7 @@ export default function Index() {
         <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
           Get started with these example queries or create your own
         </p>
-        
+
         <ExampleQueries onSelectExample={handleSelectExample} />
       </section>
     </Layout>

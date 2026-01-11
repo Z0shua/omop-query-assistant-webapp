@@ -1,16 +1,26 @@
 
 import { useState } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Clock, 
-  Download, 
-  Code, 
-  Copy, 
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Download,
+  Code,
+  Copy,
   Check,
-  BarChart,
+  BarChart as BarChartIcon,
   TableIcon,
   Maximize2,
   Minimize2,
@@ -75,13 +85,13 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
 
     try {
       const headers = Object.keys(data[0]).join(',');
-      const rows = data.map(row => 
+      const rows = data.map(row =>
         Object.values(row)
           .map(val => typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val)
           .join(',')
       ).join('\n');
       const csv = `${headers}\n${rows}`;
-      
+
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -91,7 +101,7 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       toast.success('CSV downloaded successfully');
     } catch (err) {
       toast.error('Failed to download CSV');
@@ -107,12 +117,11 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
   const formattedTime = new Date(timestamp).toLocaleString();
 
   return (
-    <Card 
-      className={`mt-4 overflow-hidden transition-all ${
-        isFullscreen 
-          ? 'fixed top-0 left-0 w-screen h-screen z-50 rounded-none'
-          : 'w-full animate-slide-in'
-      }`}
+    <Card
+      className={`mt-4 overflow-hidden transition-all ${isFullscreen
+        ? 'fixed top-0 left-0 w-screen h-screen z-50 rounded-none'
+        : 'w-full animate-slide-in'
+        }`}
     >
       <CardHeader className="bg-card border-b border-border">
         <div className="flex justify-between items-center">
@@ -124,12 +133,12 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
               </span>
             )}
           </CardTitle>
-          
+
           <div className="flex items-center space-x-2">
             {aiResponse && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={toggleAIResponseVisibility}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -142,10 +151,10 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
                 )}
               </Button>
             )}
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
+
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleSqlVisibility}
               className="text-muted-foreground hover:text-foreground"
             >
@@ -157,7 +166,7 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
                 <ChevronDown className="h-4 w-4 ml-1" />
               )}
             </Button>
-            
+
             {onDelete && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -185,7 +194,7 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            
+
             <Button
               variant="ghost"
               size="sm"
@@ -200,13 +209,13 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
             </Button>
           </div>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-muted-foreground pt-1">
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-1" />
             <span>{formattedTime}</span>
           </div>
-          
+
           <div className="flex items-center space-x-4 mt-2 sm:mt-0">
             <span>{metrics.rows} rows</span>
             <span>{metrics.columns.length} columns</span>
@@ -214,23 +223,23 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
           </div>
         </div>
       </CardHeader>
-      
+
       {isAIResponseVisible && aiResponse && (
         <div className="border-b border-border">
-          <AIResponse 
-            response={aiResponse} 
-            provider={metrics.ai_provider || 'AI'} 
+          <AIResponse
+            response={aiResponse}
+            provider={metrics.ai_provider || 'AI'}
           />
         </div>
       )}
-      
+
       {isSqlVisible && (
         <div className="bg-muted/50 p-4 border-b border-border">
           <div className="flex justify-between items-center mb-2">
             <h4 className="text-sm font-medium">Generated SQL Query</h4>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={copyToClipboard}
               className="text-muted-foreground hover:text-foreground h-8"
             >
@@ -247,7 +256,7 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
           </pre>
         </div>
       )}
-      
+
       <CardContent className="p-0">
         {data && data.length > 0 ? (
           <div>
@@ -267,11 +276,11 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
                   onClick={() => setViewMode('chart')}
                   disabled={!data || data.length === 0}
                 >
-                  <BarChart className="h-4 w-4 mr-1" />
+                  <BarChartIcon className="h-4 w-4 mr-1" />
                   Chart
                 </Button>
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -282,7 +291,7 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
                 Export CSV
               </Button>
             </div>
-            
+
             <div className="overflow-auto max-h-[500px]">
               {viewMode === 'table' ? (
                 <table className="w-full table-base">
@@ -314,8 +323,57 @@ export function QueryResult({ id, sql, data, metrics, timestamp, aiResponse, onD
                   </tbody>
                 </table>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                  <p>Chart visualization would be implemented here based on the data.</p>
+                <div className="h-[400px] w-full p-4">
+                  {(() => {
+                    // Simple heuristic to find suitable X and Y axes
+                    const keys = Object.keys(data[0]);
+                    const stringKeys = keys.filter(k => typeof data[0][k] === 'string');
+                    const numberKeys = keys.filter(k => typeof data[0][k] === 'number');
+
+                    const xAxisKey = stringKeys.length > 0 ? stringKeys[0] : keys[0];
+                    const yAxisKeys = numberKeys.length > 0 ? numberKeys : [];
+
+                    if (yAxisKeys.length === 0) {
+                      return (
+                        <div className="h-full flex items-center justify-center text-muted-foreground">
+                          <p>No numeric data found to visualize.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data}>
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis
+                            dataKey={xAxisKey}
+                            tick={{ fontSize: 12 }}
+                            interval={0}
+                            angle={-45}
+                            textAnchor="end"
+                            height={60}
+                          />
+                          <YAxis />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--card))',
+                              borderColor: 'hsl(var(--border))',
+                              color: 'hsl(var(--foreground))'
+                            }}
+                          />
+                          <Legend />
+                          {yAxisKeys.map((key, index) => (
+                            <Bar
+                              key={key}
+                              dataKey={key}
+                              fill={`hsl(var(--primary) / ${1 - index * 0.2})`}
+                              radius={[4, 4, 0, 0]}
+                            />
+                          ))}
+                        </BarChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
                 </div>
               )}
             </div>

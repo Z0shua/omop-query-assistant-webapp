@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Brain, Send, Loader } from 'lucide-react';
 import { useCredentials } from '@/hooks/use-credentials';
 import { useToast } from '@/hooks/use-toast';
-import { ChatMessage } from '@/components/ChatMessage';
+import { ChatMessage } from '@/components/features/ChatMessage';
 import { sendOMOPChatMessage } from '@/utils/azureOpenAIClient';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -45,9 +45,9 @@ export function OMOPChat() {
   // Handle sending a message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!inputMessage.trim() || isProcessing) return;
-    
+
     if (!hasCredentials()) {
       toast({
         title: "API Credentials Required",
@@ -56,7 +56,7 @@ export function OMOPChat() {
       });
       return;
     }
-    
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -64,15 +64,15 @@ export function OMOPChat() {
       isUser: true,
       timestamp: new Date().toISOString()
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsProcessing(true);
-    
+
     try {
       // Send message to Azure OpenAI
       const response = await sendOMOPChatMessage(credentials.azure, inputMessage.trim());
-      
+
       // Add AI response
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -80,11 +80,11 @@ export function OMOPChat() {
         isUser: false,
         timestamp: new Date().toISOString()
       };
-      
+
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
-      
+
       // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -93,9 +93,9 @@ export function OMOPChat() {
         timestamp: new Date().toISOString(),
         isError: true
       };
-      
+
       setMessages(prev => [...prev, errorMessage]);
-      
+
       toast({
         title: "Communication Error",
         description: "Failed to get a response from the OMOP assistant. Please check your connection and API credentials.",
@@ -140,7 +140,7 @@ export function OMOPChat() {
             </ScrollArea>
           )}
         </div>
-        
+
         <form onSubmit={handleSendMessage} className="flex items-end gap-2">
           <Textarea
             value={inputMessage}
@@ -154,9 +154,9 @@ export function OMOPChat() {
               }
             }}
           />
-          <Button 
-            type="submit" 
-            size="icon" 
+          <Button
+            type="submit"
+            size="icon"
             disabled={!inputMessage.trim() || isProcessing}
             className="h-10 w-10"
           >
@@ -167,7 +167,7 @@ export function OMOPChat() {
             )}
           </Button>
         </form>
-        
+
         {!hasCredentials() && (
           <p className="text-destructive text-xs mt-2">
             Please configure your Azure OpenAI credentials in the Settings page to use the OMOP assistant.

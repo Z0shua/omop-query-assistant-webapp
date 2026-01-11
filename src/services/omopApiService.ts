@@ -25,6 +25,8 @@ interface OMOPQueryResponse {
     columns?: string[];
     cached?: boolean;
   };
+  explanation?: string;
+  provider?: string;
 }
 
 /**
@@ -38,7 +40,7 @@ export async function executeOMOPQuery(options: OMOPQueryOptions): Promise<OMOPQ
   // Get database configuration from localStorage
   const dbConfig = localStorage.getItem('databaseConfig');
   const config = dbConfig ? JSON.parse(dbConfig) : null;
-  
+
   // If we have Supabase connected, use the edge function proxy
   try {
     if (supabase) {
@@ -53,9 +55,9 @@ export async function executeOMOPQuery(options: OMOPQueryOptions): Promise<OMOPQ
           config // Pass database configuration
         }
       });
-      
+
       if (error) throw new Error(error.message);
-      
+
       return {
         success: true,
         data: data.results || [],
@@ -72,7 +74,7 @@ export async function executeOMOPQuery(options: OMOPQueryOptions): Promise<OMOPQ
     console.error('Error using Supabase Edge Function proxy:', error);
     // Fall through to alternative methods
   }
-  
+
   // If direct API endpoint is configured, try that with CORS handling
   if (config?.apiEndpoint) {
     try {
@@ -89,14 +91,14 @@ export async function executeOMOPQuery(options: OMOPQueryOptions): Promise<OMOPQ
           offset: options.offset || 0
         })
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`API request failed: ${response.status} - ${errorText}`);
       }
-      
+
       const data = await response.json();
-      
+
       return {
         success: true,
         data: data.results || [],
@@ -109,7 +111,7 @@ export async function executeOMOPQuery(options: OMOPQueryOptions): Promise<OMOPQ
       // Fall through to mock data
     }
   }
-  
+
   // Fallback to mock data for development
   console.warn('Using mock data fallback. This should only be used for development.');
   return generateMockResponse(options);
@@ -121,7 +123,7 @@ export async function executeOMOPQuery(options: OMOPQueryOptions): Promise<OMOPQ
  */
 function generateMockResponse(options: OMOPQueryOptions): OMOPQueryResponse {
   const mockData = generateMockData(options.sql || '');
-  
+
   return {
     success: true,
     data: mockData,
@@ -143,7 +145,7 @@ function generateMockData(sqlQuery: string): any[] {
   // This is a simplified version of the function in QueryPage.tsx
   // Generate appropriate mock data based on the SQL query
   const sql = sqlQuery.toLowerCase();
-  
+
   if (sql.includes('person') && sql.includes('gender')) {
     return [
       { gender_concept_id: 8507, gender: 'Male', count: 357 },
@@ -217,7 +219,7 @@ function generateMockData(sqlQuery: string): any[] {
     const columnMatch = sql.match(/select\s+(.+?)\s+from/i);
     if (columnMatch) {
       const columns = columnMatch[1].split(',').map(col => col.trim().split(' as ').pop()?.trim() || col.trim());
-      
+
       // Remove * wildcard and handle "count(*)" type expressions
       const cleanColumns = columns
         .filter(col => col !== '*')
@@ -229,7 +231,7 @@ function generateMockData(sqlQuery: string): any[] {
           }
           return col;
         });
-      
+
       return Array.from({ length: 5 }, (_, i) => {
         const row: Record<string, any> = {};
         cleanColumns.forEach(col => {
@@ -249,17 +251,17 @@ function generateMockData(sqlQuery: string): any[] {
           } else if (col.includes('concept')) {
             row[col] = 8000 + i * 100;
           } else {
-            row[col] = `Value ${i+1}`;
+            row[col] = `Value ${i + 1}`;
           }
         });
         return row;
       });
     }
-    
+
     // If nothing matches, return a generic data structure
     return Array.from({ length: 5 }, (_, i) => ({
       id: 1000 + i,
-      value: `Result ${i+1}`,
+      value: `Result ${i + 1}`,
       count: Math.floor(Math.random() * 100) + 1
     }));
   }
@@ -274,11 +276,11 @@ export async function testOMOPConnection(): Promise<{ success: boolean; message:
       sql: 'SELECT 1 AS test',
       limit: 1
     });
-    
+
     return {
       success: response.success,
-      message: response.success 
-        ? 'Successfully connected to OMOP database' 
+      message: response.success
+        ? 'Successfully connected to OMOP database'
         : `Failed to connect: ${response.error}`
     };
   } catch (error) {

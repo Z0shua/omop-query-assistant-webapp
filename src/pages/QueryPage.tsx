@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
-import { QueryInput } from '@/components/QueryInput';
-import { QueryResult } from '@/components/QueryResult';
-import { ExampleQueries } from '@/components/ExampleQueries';
+import { QueryInput } from '@/components/features/QueryInput';
+import { QueryResult } from '@/components/features/QueryResult';
+import { ExampleQueries } from '@/components/features/ExampleQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
