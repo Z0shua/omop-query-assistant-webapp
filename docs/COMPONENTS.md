@@ -1,8 +1,6 @@
 # OMOP Query Assistant - Component Documentation
 
-## Overview
-
-This document provides detailed information about the key components in the OMOP Query Assistant frontend, their purpose, props, and usage patterns.
+This document provides detailed information about the key components in the OMOP Query Assistant frontend, their purpose, props, and usage patterns. Components are organized by feature area following the project's architectural overhaul.
 
 ## Page Components
 
@@ -144,21 +142,21 @@ This document provides detailed information about the key components in the OMOP
 - Expandable/collapsible sections
 - SQL syntax highlighting
 - Data table display
-- Chart visualization
-- Export functionality
+- Advanced chart visualization (Auto-selected Pie, Line, or Bar charts)
+- Export functionality (CSV download)
 
-### AIResponse.tsx
+### ConceptSearch.tsx
 
-**Purpose:** Display AI-generated explanations.
+**Purpose:** Interface for searching standard OMOP concepts.
 
 **Props:**
-- `response`: AI explanation text
-- `provider`: AI provider name
+- `onSelect`: Callback when a concept is selected
 
 **Features:**
-- Expandable text display
-- Copy to clipboard
-- Provider-specific styling
+- Real-time search by name, ID, or domain
+- Mocked concept database for development
+- Quick integration with query builder
+- Domain-specific badges for results
 
 ### ExampleQueries.tsx
 
@@ -350,11 +348,13 @@ Components follow accessibility best practices:
 
 1. **File Structure:**
    ```
-   src/components/
+   src/components/features/
    ├── ComponentName.tsx
    ├── ComponentName.test.tsx
    └── index.ts
    ```
+
+   Major features go in `features/`, settings in `settings/`, layout in `layout/`, and primitive components in `ui/`.
 
 2. **Component Template:**
    ```typescript

@@ -5,12 +5,13 @@ A web application that enables natural language querying of OMOP (Observational 
 ## 🚀 Features
 
 - **Natural Language to SQL**: Convert medical questions to OMOP-compliant SQL queries
+- **Concept Search**: Search standard OMOP concepts (conditions, drugs, etc.) to refine queries
 - **Multi-AI Support**: OpenAI, Anthropic, Google AI, and Deepseek integration
 - **Database Compatibility**: PostgreSQL, SQLite, and mock database support
-- **Interactive Results**: Tables, charts, and data visualizations
+- **Advanced Visualizations**: Auto-selecting Line, Bar, and Pie charts based on result data
 - **Query Management**: History tracking and example queries
 - **Secure Credentials**: Browser-based credential storage
-- **Modern UI**: Built with React, TypeScript, and Tailwind CSS
+- **Modern UI**: Built with React, TypeScript, and Tailwind CSS using a feature-based architecture
 
 ## 🏗️ Architecture
 
@@ -109,9 +110,10 @@ export VITE_API_URL=http://your-backend-url:port
 ## 📖 Usage
 
 1. **Start Querying**: Click "Start SQL Querying" on the home page
-2. **Ask Questions**: Enter medical data questions in natural language
-3. **View Results**: See generated SQL, results tables, and visualizations
-4. **Explore History**: Access previous queries and examples
+2. **Concept Exploration**: Use the "Concepts" tab to find standard OMOP codes for conditions, drugs, etc.
+3. **Ask Questions**: Enter medical data questions in natural language
+4. **Interactive Analysis**: View generated SQL, results tables, and auto-selected visualizations (Pie, Line, or Bar charts)
+5. **Manage History**: Access previous queries and examples directly from the interface
 
 ### Example Queries
 - "How many patients have diabetes?"

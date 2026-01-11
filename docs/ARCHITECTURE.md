@@ -40,6 +40,8 @@ The OMOP Query Assistant is a full-stack web application that enables users to q
 - **QueryPage.tsx** - Main query interface where users input natural language questions
 - **SettingsPage.tsx** - Configuration for AI providers and database connections
 - **HistoryPage.tsx** - View and manage query history
+- **ExamplesPage.tsx** - Gallery of example queries
+- **DatabaseInfoPage.tsx** - Detailed schema info
 - **HelpPage.tsx** - Documentation and guidance
 
 #### Services
@@ -103,11 +105,11 @@ GET  /api/health/detailed     - Detailed health check
 ### Query Processing Flow
 
 ```
-1. User Input (Natural Language)
+1. User Input (Natural Language or Concept Selection)
    ↓
 2. Frontend Validation & Credential Check
    ↓
-3. executeOMOPQuery() in omopApiService.ts
+3. executeOMOPQuery() or searchConcepts() in omopApiService.ts
    ↓
 4. Backend API Call or Supabase Edge Function
    ↓
@@ -117,7 +119,7 @@ GET  /api/health/detailed     - Detailed health check
    ↓
 7. Database Query Execution
    ↓
-8. Result Processing & Formatting
+8. Result Processing & Formatting (Auto-selected Visualizations)
    ↓
 9. Frontend Display & History Storage
 ```
@@ -207,10 +209,13 @@ GET  /api/health/detailed     - Detailed health check
 4. Update documentation and examples
 
 ### Code Organization
-- **Services:** Business logic and external integrations
-- **Components:** Reusable UI elements
-- **Pages:** Main application views
-- **Hooks:** Custom React hooks for state management
-- **Utils:** Helper functions and utilities
+- **Services:** Business logic and external integrations (src/services)
+- **Features:** Major feature-specific components (src/components/features)
+- **Settings:** Configuration-related components (src/components/settings)
+- **UI:** Reusable UI elements from shadcn/ui (src/components/ui)
+- **Layout:** High-level structure components (src/components/layout)
+- **Pages:** Main application views (src/pages)
+- **Hooks:** Custom React hooks for state management (src/hooks)
+- **Utils:** Helper functions and utilities (src/utils)
 
-This architecture provides a solid foundation for the OMOP Query Assistant, with clear separation of concerns, extensible design, and robust error handling. 
+This architecture provides a solid foundation for the OMOP Query Assistant, with clear separation of concerns, extensible design, and robust error handling.
